@@ -2,6 +2,7 @@ import { Client, Collection, Events, GatewayIntentBits } from "discord.js";
 import type { Command } from "./types.ts";
 import * as ping from "./commands/ping.ts";
 import * as monitor from "./commands/monitor.ts";
+import * as help from "./commands/help.ts";
 import { startPoller, stopPoller } from "./monitor/poller.ts";
 import { closeBrowser } from "./monitor/browser.ts";
 
@@ -12,7 +13,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 const commands = new Collection<string, Command>();
 
-for (const cmd of [ping, monitor]) {
+for (const cmd of [ping, monitor, help]) {
   commands.set(cmd.data.name, cmd);
 }
 
