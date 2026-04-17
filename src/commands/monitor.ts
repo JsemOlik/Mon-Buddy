@@ -74,7 +74,7 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
   const storeName = getStoreNameForUrl(parsed.href);
   if (!storeName) {
     await interaction.reply({
-      content: `Unsupported store. Currently supported: **HranaNetu.cz**.`,
+      content: `Unsupported store. Currently supported: **HraNaNetu.cz**.`,
       flags: MessageFlags.Ephemeral,
     });
     return;

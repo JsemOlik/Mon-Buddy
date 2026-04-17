@@ -12,21 +12,17 @@ export const hrananetuScraper: StockScraper = {
 
     const label = root.querySelector("h1")?.text.trim() ?? url;
 
-    // Target the specific <abbr data-toggle="tooltip"> element that carries the
-    // per-product stock status. Related products further down the page can also
-    // contain "Není skladem" which breaks a full-page text scan.
-    const abbrs = root.querySelectorAll('abbr[data-toggle="tooltip"]');
-    const stockAbbr = abbrs.find((el) => {
-      const t = el.text.toLowerCase();
-      return t.includes("skladem") || t.includes("na skladě");
-    });
-    const inStock =
-      stockAbbr !== undefined &&
-      !stockAbbr.text.toLowerCase().includes("není");
+    // Schema.org availability — most reliable signal, unaffected by related products
+    const availHref = root
+      .querySelector('link[itemprop="availability"]')
+      ?.getAttribute("href") ?? "";
+    const inStock = availHref.toLowerCase().includes("instock");
 
-    // Price: look for text containing "Kč"
-    const priceEl = root.querySelector("strong, .price, [class*='price']");
-    const price = priceEl?.text.includes("Kč") ? priceEl.text.trim() : undefined;
+    // Schema.org price meta tags — clean numeric value + currency
+    const priceValue = root
+      .querySelector('meta[itemprop="price"]')
+      ?.getAttribute("content");
+    const price = priceValue ? `${priceValue} Kč` : undefined;
 
     return { inStock, label, price };
   },
