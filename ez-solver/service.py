@@ -23,20 +23,68 @@ from socketserver import ThreadingMixIn
 from typing import Optional
 import json
 
-from solver import solve
+import asyncio as _asyncio
+import nodriver as uc
+from solver import solve, _find_chrome, _get_profile_dir
 
 
 PORT = int(os.environ.get("PORT", 8191))
-# How many Chrome instances to run in parallel.
-# Rule of thumb: ~500 MB RAM per worker. 4 workers = ~2 GB.
 MAX_WORKERS = int(os.environ.get("MAX_WORKERS", 4))
 
-# Semaphore caps concurrent Chrome instances; threads above the limit
-# block here (queued) until a slot opens — no requests are dropped.
 _worker_sem = threading.Semaphore(MAX_WORKERS)
 _active_count = 0
 _queued_count = 0
 _count_lock = threading.Lock()
+
+# --- Persistent browser for /fetch ---
+# One Chrome window stays open; each request opens a new tab, scrapes, and
+# closes it. An asyncio Lock serialises tabs so only one runs at a time.
+_fetch_loop = _asyncio.new_event_loop()
+_fetch_browser: Optional[uc.Browser] = None
+_fetch_lock: Optional[_asyncio.Lock] = None
+
+
+def _run_fetch_loop(loop: _asyncio.AbstractEventLoop) -> None:
+    _asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+
+threading.Thread(target=_run_fetch_loop, args=(_fetch_loop,), daemon=True).start()
+
+
+async def _fetch_url(url: str, wait: float) -> str:
+    global _fetch_browser, _fetch_lock
+
+    # Lock must be created on the fetch loop's thread
+    if _fetch_lock is None:
+        _fetch_lock = _asyncio.Lock()
+
+    async with _fetch_lock:
+        # (Re)start browser if needed
+        if _fetch_browser is None:
+            print("[fetch] Starting persistent Chrome browser")
+            _fetch_browser = await uc.start(
+                browser_executable_path=_find_chrome(),
+                headless=False,
+                user_data_dir=_get_profile_dir(),
+            )
+
+        try:
+            page = await _fetch_browser.get(url, new_tab=True)
+            try:
+                for _ in range(int(wait / 0.5)):
+                    content = await page.get_content()
+                    if "availabilityText" in content or "ads-pb__price" in content:
+                        await _asyncio.sleep(3)
+                        return await page.get_content()
+                    await _asyncio.sleep(0.5)
+                return await page.get_content()
+            finally:
+                await page.close()
+        except Exception:
+            # Browser may have crashed — reset so the next call restarts it
+            _fetch_browser = None
+            raise
 
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
@@ -74,8 +122,8 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
-        if self.path != "/solve":
-            self.send_json(404, {"error": "not found — use POST /solve"})
+        if self.path not in ("/solve", "/fetch"):
+            self.send_json(404, {"error": "not found — use POST /solve or POST /fetch"})
             return
 
         length = int(self.headers.get("Content-Length", 0))
@@ -90,6 +138,23 @@ class Handler(BaseHTTPRequestHandler):
         sitekey = payload.get("sitekey", "").strip()
         siteurl = payload.get("siteurl", "").strip()
         timeout = int(payload.get("timeout", 45))
+
+        if self.path == "/fetch":
+            url = payload.get("url", "").strip()
+            if not url:
+                self.send_json(400, {"error": "url is required"})
+                return
+            wait = float(payload.get("wait", 6))
+
+            try:
+                future = _asyncio.run_coroutine_threadsafe(
+                    _fetch_url(url, wait), _fetch_loop
+                )
+                html = future.result(timeout=120)
+                self.send_json(200, {"html": html})
+            except Exception as exc:
+                self.send_json(500, {"error": str(exc)})
+            return
 
         if not sitekey or not siteurl:
             self.send_json(400, {"error": "sitekey and siteurl are required"})

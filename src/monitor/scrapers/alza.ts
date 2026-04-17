@@ -1,8 +1,7 @@
 import { parse } from "node-html-parser";
 import type { StockScraper, ScrapeResult } from "./base.ts";
-import { ensureChromium } from "../browser.ts";
-import { openPage } from "../cdp.ts";
 
+const SOLVER_URL = "http://127.0.0.1:8191";
 const OUT_OF_STOCK_PHRASES = ["není skladem", "nedostupné", "vyprodáno"];
 
 export const alzaScraper: StockScraper = {
@@ -10,43 +9,43 @@ export const alzaScraper: StockScraper = {
   hostPattern: /alza\.cz$/,
 
   async scrape(url: string): Promise<ScrapeResult> {
-    console.log(`[alza] Scraping ${url}`);
-    await ensureChromium();
-    const page = await openPage();
+    console.log(`[alza] Fetching via solver service: ${url}`);
 
+    let html: string;
     try {
-      console.log(`[alza] Navigating...`);
-      await page.goto(url, 20_000);
-      console.log(`[alza] Page loaded, waiting for availability element`);
-
-      try {
-        await page.waitForSelector('button[data-testid*="availabilityText"]', 15_000);
-      } catch {
-        console.log(`[alza] Availability selector timed out, parsing raw content`);
+      const res = await fetch(`${SOLVER_URL}/fetch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, wait: 15 }),
+      });
+      const data = await res.json() as { html?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? res.statusText);
+      html = data.html!;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("ECONNREFUSED") || msg.includes("Connection refused")) {
+        throw new Error("Alza requires the EzSolver service — run `python ez-solver/service.py` in a separate terminal first.");
       }
-
-      const html = await page.content();
-      const root = parse(html);
-
-      const label = root.querySelector("h1")?.text.trim() ?? url;
-
-      const availBtn = root.querySelector('button[data-testid*="availabilityText"]');
-      const availText = availBtn?.text.trim().toLowerCase() ?? "";
-      const inStock =
-        availText.length > 0 &&
-        availText.includes("skladem") &&
-        !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
-
-      const rawAvail = availBtn?.text.trim() ?? "";
-      const stockAmount = rawAvail.replace(/^skladem\s*/i, "").trim() || undefined;
-
-      const priceText = root.querySelector(".ads-pb__price-value")?.text.trim();
-      const price = priceText ? `${priceText} Kč` : undefined;
-
-      console.log(`[alza] Done — inStock=${inStock}, label="${label}"`);
-      return { inStock, label, price, stockAmount };
-    } finally {
-      await page.close();
+      throw err;
     }
+
+    const root = parse(html);
+    const label = root.querySelector("h1")?.text.trim() ?? url;
+
+    const availBtn = root.querySelector('button[data-testid*="availabilityText"]');
+    const availText = availBtn?.text.trim().toLowerCase() ?? "";
+    const inStock =
+      availText.length > 0 &&
+      availText.includes("skladem") &&
+      !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
+
+    const rawAvail = availBtn?.text.trim() ?? "";
+    const stockAmount = rawAvail.replace(/^skladem\s*/i, "").trim() || undefined;
+
+    const priceText = root.querySelector(".ads-pb__price-value")?.text.trim();
+    const price = priceText ? `${priceText} Kč` : undefined;
+
+    console.log(`[alza] Done — inStock=${inStock}, label="${label}"`);
+    return { inStock, label, price, stockAmount };
   },
 };
