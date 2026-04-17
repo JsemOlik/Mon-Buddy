@@ -1,6 +1,6 @@
 import { parse } from "node-html-parser";
 import type { StockScraper, ScrapeResult } from "./base.ts";
-import { fetchHtml } from "./base.ts";
+import { getBrowser } from "../browser.ts";
 
 const OUT_OF_STOCK_PHRASES = ["není skladem", "nedostupné", "vyprodáno"];
 
@@ -9,27 +9,46 @@ export const alzaScraper: StockScraper = {
   hostPattern: /alza\.cz$/,
 
   async scrape(url: string): Promise<ScrapeResult> {
-    const html = await fetchHtml(url);
-    const root = parse(html);
+    const browser = await getBrowser();
+    const page = await browser.newPage();
 
-    const label = root.querySelector("h1")?.text.trim() ?? url;
+    try {
+      // Block images, fonts, media — only need HTML + JS
+      await page.route("**/*", (route) => {
+        const type = route.request().resourceType();
+        if (["image", "font", "media", "stylesheet"].includes(type)) {
+          route.abort();
+        } else {
+          route.continue();
+        }
+      });
 
-    // Availability button: "Skladem > 10 ks" or "Není skladem"
-    const availBtn = root.querySelector('button[data-testid*="availabilityText"]');
-    const availText = availBtn?.text.trim().toLowerCase() ?? "";
-    const inStock =
-      availText.length > 0 &&
-      availText.includes("skladem") &&
-      !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
 
-    // Strip "Skladem " prefix → "> 10 ks"
-    const rawAvail = availBtn?.text.trim() ?? "";
-    const stockAmount = rawAvail.replace(/^skladem\s*/i, "").trim() || undefined;
+      // Wait for availability button to be rendered
+      await page.waitForSelector('button[data-testid*="availabilityText"]', { timeout: 15_000 });
 
-    // ".ads-pb__price-value" → "149,-" → "149,- Kč"
-    const priceText = root.querySelector(".ads-pb__price-value")?.text.trim();
-    const price = priceText ? `${priceText} Kč` : undefined;
+      const html = await page.content();
+      const root = parse(html);
 
-    return { inStock, label, price, stockAmount };
+      const label = root.querySelector("h1")?.text.trim() ?? url;
+
+      const availBtn = root.querySelector('button[data-testid*="availabilityText"]');
+      const availText = availBtn?.text.trim().toLowerCase() ?? "";
+      const inStock =
+        availText.length > 0 &&
+        availText.includes("skladem") &&
+        !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
+
+      const rawAvail = availBtn?.text.trim() ?? "";
+      const stockAmount = rawAvail.replace(/^skladem\s*/i, "").trim() || undefined;
+
+      const priceText = root.querySelector(".ads-pb__price-value")?.text.trim();
+      const price = priceText ? `${priceText} Kč` : undefined;
+
+      return { inStock, label, price, stockAmount };
+    } finally {
+      await page.close();
+    }
   },
 };
