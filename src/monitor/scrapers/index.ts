@@ -1,7 +1,8 @@
 import type { StockScraper } from "./base.ts";
 import { hrananetuScraper } from "./hrananetu.ts";
+import { cardstoreScraper } from "./cardstore.ts";
 
-const registry: StockScraper[] = [hrananetuScraper];
+const registry: StockScraper[] = [hrananetuScraper, cardstoreScraper];
 
 export function getScraperForUrl(url: string): StockScraper | null {
   try {

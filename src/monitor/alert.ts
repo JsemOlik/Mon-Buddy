@@ -3,6 +3,7 @@ import type { ProductRow } from "./db.ts";
 
 const storeDisplayNames: Record<string, string> = {
   hrananetu: "HranaNetu.cz",
+  cardstore: "CardStore.cz",
 };
 
 export function buildStockAlert(product: ProductRow, price?: string): EmbedBuilder {
