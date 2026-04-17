@@ -1,14 +1,14 @@
-import { chromium, type Browser } from "playwright";
+import { chromium } from "playwright";
 import type { Subprocess } from "bun";
 
-let _browser: Browser | null = null;
+const CDP_PORT = 9222;
 let _proc: Subprocess | null = null;
-let _initPromise: Promise<Browser> | null = null;
+let _ensurePromise: Promise<void> | null = null;
 
-async function waitForCDP(port: number): Promise<void> {
+async function waitForCDP(): Promise<void> {
   for (let i = 0; i < 30; i++) {
     try {
-      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+      const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
       if (res.ok) return;
     } catch {}
     await Bun.sleep(200);
@@ -16,21 +16,24 @@ async function waitForCDP(port: number): Promise<void> {
   throw new Error("Chromium CDP endpoint did not start within 6s");
 }
 
-async function launch(): Promise<Browser> {
-  const port = 9222;
+async function spawnChromium(): Promise<void> {
+  // Already running?
+  try {
+    const res = await fetch(`http://127.0.0.1:${CDP_PORT}/json/version`);
+    if (res.ok) return;
+  } catch {}
+
   const execPath = chromium.executablePath();
+  console.log(`[browser] Spawning Chromium on port ${CDP_PORT}`);
 
-  console.log(`[browser] Spawning Chromium on port ${port}`);
-
-  // Use Bun.spawn instead of Playwright's launch() — chromium.launch() hangs
-  // in Bun because Playwright's Node.js child_process subprocess stderr reading
-  // is not compatible with Bun's child_process emulation.
+  // Use Bun.spawn — chromium.launch() hangs in Bun because Playwright's
+  // Node.js child_process stderr reading is incompatible with Bun's emulation.
   _proc?.kill();
   _proc = Bun.spawn(
     [
       execPath,
       "--headless=new",
-      `--remote-debugging-port=${port}`,
+      `--remote-debugging-port=${CDP_PORT}`,
       "--no-sandbox",
       "--disable-gpu",
       "--disable-dev-shm-usage",
@@ -40,26 +43,18 @@ async function launch(): Promise<Browser> {
     { stdout: "ignore", stderr: "ignore" },
   );
 
-  await waitForCDP(port);
-  console.log(`[browser] CDP ready, connecting`);
-
-  const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
-  _browser = browser;
-  return browser;
+  await waitForCDP();
+  console.log(`[browser] CDP ready on port ${CDP_PORT}`);
 }
 
-export async function getBrowser(): Promise<Browser> {
-  if (_browser?.isConnected()) return _browser;
-  // Deduplicate concurrent launch attempts — all callers wait on the same promise
-  if (!_initPromise) {
-    _initPromise = launch().finally(() => { _initPromise = null; });
+export async function ensureChromium(): Promise<void> {
+  if (!_ensurePromise) {
+    _ensurePromise = spawnChromium().finally(() => { _ensurePromise = null; });
   }
-  return _initPromise;
+  return _ensurePromise;
 }
 
 export async function closeBrowser(): Promise<void> {
-  try { await _browser?.close(); } catch {}
-  _browser = null;
   _proc?.kill();
   _proc = null;
 }

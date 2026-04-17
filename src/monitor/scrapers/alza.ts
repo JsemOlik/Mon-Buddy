@@ -1,6 +1,7 @@
 import { parse } from "node-html-parser";
 import type { StockScraper, ScrapeResult } from "./base.ts";
-import { getBrowser } from "../browser.ts";
+import { ensureChromium } from "../browser.ts";
+import { openPage } from "../cdp.ts";
 
 const OUT_OF_STOCK_PHRASES = ["není skladem", "nedostupné", "vyprodáno"];
 
@@ -9,29 +10,19 @@ export const alzaScraper: StockScraper = {
   hostPattern: /alza\.cz$/,
 
   async scrape(url: string): Promise<ScrapeResult> {
-    console.log(`[alza] Launching browser for ${url}`);
-    const browser = await getBrowser();
-    const page = await browser.newPage();
+    console.log(`[alza] Scraping ${url}`);
+    await ensureChromium();
+    const page = await openPage();
 
     try {
-      await page.route("**/*", (route) => {
-        const type = route.request().resourceType();
-        if (["image", "font", "media", "stylesheet"].includes(type)) {
-          route.abort();
-        } else {
-          route.continue();
-        }
-      });
+      console.log(`[alza] Navigating...`);
+      await page.goto(url, 20_000);
+      console.log(`[alza] Page loaded, waiting for availability element`);
 
-      console.log(`[alza] goto ${url}`);
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20_000 });
-      console.log(`[alza] page loaded, waiting for availability element`);
-
-      // Non-fatal: if element doesn't appear in time, parse whatever content we have
       try {
-        await page.waitForSelector('button[data-testid*="availabilityText"]', { timeout: 8_000 });
+        await page.waitForSelector('button[data-testid*="availabilityText"]', 8_000);
       } catch {
-        console.log(`[alza] availability selector timed out, parsing raw content`);
+        console.log(`[alza] Availability selector timed out, parsing raw content`);
       }
 
       const html = await page.content();
@@ -52,7 +43,7 @@ export const alzaScraper: StockScraper = {
       const priceText = root.querySelector(".ads-pb__price-value")?.text.trim();
       const price = priceText ? `${priceText} Kč` : undefined;
 
-      console.log(`[alza] done — inStock=${inStock}, label="${label}"`);
+      console.log(`[alza] Done — inStock=${inStock}, label="${label}"`);
       return { inStock, label, price, stockAmount };
     } finally {
       await page.close();
