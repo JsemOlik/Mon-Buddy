@@ -2,6 +2,7 @@ export interface ScrapeResult {
   inStock: boolean;
   label: string;
   price?: string;
+  stockAmount?: string;  // e.g. ">15 ks", "3 ks"
 }
 
 export interface StockScraper {
