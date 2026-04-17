@@ -10,7 +10,7 @@ export interface StockScraper {
   scrape(url: string): Promise<ScrapeResult>;
 }
 
-export async function fetchHtml(url: string): Promise<string> {
+export async function fetchHtml(url: string, referer?: string): Promise<string> {
   const origin = new URL(url).origin;
   const res = await fetch(url, {
     headers: {
@@ -18,7 +18,7 @@ export async function fetchHtml(url: string): Promise<string> {
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
       "Accept-Language": "cs-CZ,cs;q=0.9,en-US;q=0.8,en;q=0.7",
       "Accept-Encoding": "gzip, deflate, br",
-      "Referer": origin + "/",
+      "Referer": referer ?? origin + "/",
       "Sec-Fetch-Dest": "document",
       "Sec-Fetch-Mode": "navigate",
       "Sec-Fetch-Site": "same-origin",

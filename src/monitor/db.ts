@@ -26,7 +26,9 @@ db.run(`
 `);
 
 db.run(`INSERT OR IGNORE INTO config VALUES ('alert_channel_id', '')`);
-db.run(`INSERT OR IGNORE INTO config VALUES ('poll_interval_ms', '300000')`);
+db.run(`INSERT OR IGNORE INTO config VALUES ('poll_interval_ms', '30000')`);
+// Migrate old default (5 min) to new default (30 s) — leaves custom values untouched
+db.run(`UPDATE config SET value = '30000' WHERE key = 'poll_interval_ms' AND value = '300000'`);
 
 db.run(`
   CREATE TABLE IF NOT EXISTS stock_events (

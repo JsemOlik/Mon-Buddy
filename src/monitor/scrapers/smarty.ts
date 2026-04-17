@@ -1,12 +1,19 @@
+import { parse } from "node-html-parser";
 import type { StockScraper, ScrapeResult } from "./base.ts";
+import { fetchHtml } from "./base.ts";
 
-const ACTOR_ID = "bytepulselabs~smarty-product-scraper";
+function extractProductId(url: string): string | null {
+  const match = new URL(url).pathname.match(/4p(\d+)/i);
+  return match?.[1] ?? null;
+}
 
-interface ApifyProduct {
-  url?: string;
-  name?: string;
-  availability?: string;
-  price?: { value: number; currency: string };
+function labelFromUrl(url: string): string {
+  const slug = new URL(url).pathname.split("/").filter(Boolean).pop() ?? url;
+  return slug
+    .replace(/--4p\d+$/i, "")   // strip --4p12345 suffix
+    .replace(/-4p\d+$/i, "")    // strip -4p12345 suffix (single dash variant)
+    .replace(/-+/g, " ")         // dashes → spaces
+    .trim();
 }
 
 export const smartyScraper: StockScraper = {
@@ -14,39 +21,24 @@ export const smartyScraper: StockScraper = {
   hostPattern: /smarty\.cz$/,
 
   async scrape(url: string): Promise<ScrapeResult> {
-    const token = process.env.APIFY_TOKEN;
-    if (!token) throw new Error("Missing APIFY_TOKEN in .env");
+    const productId = extractProductId(url);
+    if (!productId) throw new Error(`Cannot extract product ID from Smarty URL: ${url}`);
 
-    const apiUrl =
-      `https://api.apify.com/v2/acts/${ACTOR_ID}/run-sync-get-dataset-items` +
-      `?token=${token}&timeout=240&memory=1024`;
+    const stockUrl =
+      `https://www.smarty.cz/Products/Product/StoreInfoItems` +
+      `?productId=${productId}&productImeiId=null&query=&latitude=null` +
+      `&longitude=null&inStock=false&buyoutCategoryId=null&discountPromo=&onlyShops=false`;
 
-    const res = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        urls: [{ url }],
-        proxy: { useApifyProxy: true, apifyProxyCountry: "CZ" },
-      }),
-    });
+    const html = await fetchHtml(stockUrl, url);
+    const root = parse(html);
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Apify error ${res.status}: ${body}`);
-    }
-
-    const items = (await res.json()) as ApifyProduct[];
-    const item = items.find((i) => i.url === url) ?? items[0];
-
-    if (!item) throw new Error("Apify returned no product data for this URL");
-
-    const avail = item.availability?.toLowerCase() ?? "";
-    const inStock = avail.includes("in stock") || avail.includes("skladem");
+    // Strip "není skladem" entries so the remaining "skladem" matches are true in-stock hits
+    const cleaned = root.text.toLowerCase().replace(/není\s+skladem/g, "");
+    const inStock = cleaned.includes("skladem");
 
     return {
       inStock,
-      label: item.name ?? url,
-      price: item.price ? `${item.price.value} ${item.price.currency}` : undefined,
+      label: labelFromUrl(url),
     };
   },
 };
