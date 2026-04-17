@@ -45,7 +45,13 @@ export const alzaScraper: StockScraper = {
     const priceText = root.querySelector(".ads-pb__price-value")?.text.trim();
     const price = priceText ? `${priceText} Kč` : undefined;
 
+    const rawSrc = root.querySelector(".swiper-zoom-container img")?.getAttribute("src");
+    // Use 500×500 variant — large enough for Discord, small enough to load fast
+    const imageUrl = rawSrc
+      ? rawSrc.replace(/([?&]width=)\d+/, "$1500").replace(/([?&]height=)\d+/, "$1500")
+      : undefined;
+
     console.log(`[alza] Done — inStock=${inStock}, label="${label}"`);
-    return { inStock, label, price, stockAmount };
+    return { inStock, label, price, stockAmount, imageUrl };
   },
 };
