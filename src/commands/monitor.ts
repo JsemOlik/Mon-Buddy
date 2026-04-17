@@ -1,43 +1,48 @@
 import {
   ChatInputCommandInteraction,
+  ModalSubmitInteraction,
+  ButtonInteraction,
+  StringSelectMenuInteraction,
   SlashCommandBuilder,
   EmbedBuilder,
   Colors,
   ChannelType,
   MessageFlags,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
 } from "discord.js";
-import {
-  addProduct,
-  removeProduct,
-  listProducts,
-  getProduct,
-  setConfig,
-} from "../monitor/db.ts";
+import type { ProductRow } from "../monitor/db.ts";
+import { addProduct, removeProduct, listProducts, setConfig } from "../monitor/db.ts";
 import { getScraperForUrl, getStoreNameForUrl } from "../monitor/scrapers/index.ts";
+
+const PAGE_SIZE = 6;
+
+const storeDisplayNames: Record<string, string> = {
+  hrananetu: "HraNaNetu.cz",
+  cardstore: "CardStore.cz",
+  cdmc: "CDMC.cz",
+  xzone: "Xzone.cz",
+  alza: "Alza.cz",
+};
 
 export const data = new SlashCommandBuilder()
   .setName("monitor")
   .setDescription("Manage product stock monitors")
   .addSubcommand((sub) =>
-    sub
-      .setName("add")
-      .setDescription("Start monitoring a product URL")
-      .addStringOption((opt) =>
-        opt.setName("url").setDescription("Product page URL").setRequired(true)
-      )
+    sub.setName("add").setDescription("Start monitoring a product URL")
   )
   .addSubcommand((sub) =>
-    sub
-      .setName("remove")
-      .setDescription("Stop monitoring a product")
-      .addIntegerOption((opt) =>
-        opt
-          .setName("id")
-          .setDescription("Monitor ID (from /monitor list)")
-          .setRequired(true)
-      )
+    sub.setName("remove").setDescription("Stop monitoring a product")
   )
-  .addSubcommand((sub) => sub.setName("list").setDescription("List all monitored products"))
+  .addSubcommand((sub) =>
+    sub.setName("list").setDescription("List all monitored products")
+  )
   .addSubcommand((sub) =>
     sub
       .setName("setchannel")
@@ -53,28 +58,160 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   const sub = interaction.options.getSubcommand();
-
   if (sub === "add") return handleAdd(interaction);
   if (sub === "remove") return handleRemove(interaction);
   if (sub === "list") return handleList(interaction);
   if (sub === "setchannel") return handleSetChannel(interaction);
 }
 
+function buildAddModal(): ModalBuilder {
+  return new ModalBuilder()
+    .setCustomId("monitor:add:modal")
+    .setTitle("Add Product Monitor")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("monitor:add:url")
+          .setLabel("Product URL")
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder("https://www.alza.cz/...")
+          .setRequired(true),
+      ),
+    );
+}
+
+function buildRemoveMenu(products: ProductRow[]): {
+  content: string;
+  components: ActionRowBuilder<StringSelectMenuBuilder>[];
+} {
+  const shown = products.slice(0, 25);
+  const overflow = products.length > 25 ? ` (showing first 25 of ${products.length})` : "";
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId("monitor:remove-cmd")
+    .setPlaceholder("Select a monitor to remove...")
+    .addOptions(
+      shown.map((p) =>
+        new StringSelectMenuOptionBuilder()
+          .setLabel(p.label.length > 100 ? p.label.slice(0, 97) + "..." : p.label)
+          .setDescription(storeDisplayNames[p.store] ?? p.store)
+          .setValue(String(p.id)),
+      ),
+    );
+  return {
+    content: `Select a monitor to remove${overflow}:`,
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)],
+  };
+}
+
+function buildListPage(
+  products: ProductRow[],
+  page: number,
+): {
+  embed: EmbedBuilder;
+  components: ActionRowBuilder<ButtonBuilder>[];
+} {
+  const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
+  const safePage = Math.min(Math.max(0, page), totalPages - 1);
+  const slice = products.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
+  const embed = new EmbedBuilder().setColor(Colors.Blue);
+
+  if (products.length === 0) {
+    embed
+      .setTitle("Monitored Products")
+      .setDescription("No monitors yet. Press **➕ Add** to add one.");
+  } else {
+    const rows = slice.map((p) => {
+      const store = storeDisplayNames[p.store] ?? p.store;
+      const status = p.in_stock ? "✅" : "❌";
+      return `**${p.id}.** ${status} [${p.label}](${p.url})\n↳ ${store}`;
+    });
+    embed
+      .setTitle(`Monitored Products (${products.length})`)
+      .setDescription(rows.join("\n\n"));
+  }
+
+  const components: ActionRowBuilder<ButtonBuilder>[] = [];
+
+  const prevBtn = new ButtonBuilder()
+    .setCustomId(`monitor:nav:${safePage - 1}`)
+    .setLabel("◀")
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(safePage === 0);
+
+  const pageBtn = new ButtonBuilder()
+    .setCustomId("monitor:noop")
+    .setLabel(`${safePage + 1} / ${totalPages}`)
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(true);
+
+  const nextBtn = new ButtonBuilder()
+    .setCustomId(`monitor:nav:${safePage + 1}`)
+    .setLabel("▶")
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(safePage >= totalPages - 1);
+
+  const addBtn = new ButtonBuilder()
+    .setCustomId("monitor:add")
+    .setLabel("➕ Add")
+    .setStyle(ButtonStyle.Primary);
+
+  components.push(
+    new ActionRowBuilder<ButtonBuilder>().addComponents(prevBtn, pageBtn, nextBtn, addBtn),
+  );
+
+  return { embed, components };
+}
+
 async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void> {
-  const url = interaction.options.getString("url", true).trim();
+  await interaction.showModal(buildAddModal());
+}
+
+async function handleRemove(interaction: ChatInputCommandInteraction): Promise<void> {
+  const products = listProducts();
+  if (products.length === 0) {
+    await interaction.reply({ content: "No monitors to remove.", flags: MessageFlags.Ephemeral });
+    return;
+  }
+  const { content, components } = buildRemoveMenu(products);
+  await interaction.reply({ content, components, flags: MessageFlags.Ephemeral });
+}
+
+async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
+  const { embed, components } = buildListPage(listProducts(), 0);
+  await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+}
+
+async function handleSetChannel(interaction: ChatInputCommandInteraction): Promise<void> {
+  const channel = interaction.options.getChannel("channel", true);
+  setConfig("alert_channel_id", channel.id);
+  await interaction.reply({
+    content: `Stock alerts will now be sent to <#${channel.id}>.`,
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
+export async function handleModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  if (interaction.customId !== "monitor:add:modal") return;
+
+  const url = interaction.fields.getTextInputValue("monitor:add:url").trim();
 
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
-    await interaction.reply({ content: "Invalid URL. Please provide a full product URL including `https://`.", flags: MessageFlags.Ephemeral });
+    await interaction.reply({
+      content: "Invalid URL. Please provide a full product URL including `https://`.",
+      flags: MessageFlags.Ephemeral,
+    });
     return;
   }
 
   const storeName = getStoreNameForUrl(parsed.href);
   if (!storeName) {
     await interaction.reply({
-      content: `Unsupported store. Currently supported: **HranaNetu.cz**, **CardStore.cz**, **CDMC.cz**, **Xzone.cz**, **Alza.cz**.`,
+      content:
+        "Unsupported store. Currently supported: **HraNaNetu.cz**, **CardStore.cz**, **CDMC.cz**, **Xzone.cz**, **Alza.cz**.",
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -82,100 +219,62 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  // Try to scrape for label/stock on add, but don't block adding if the scrape fails
   const scraper = getScraperForUrl(parsed.href)!;
   let scrapeResult: { inStock: boolean; label: string } | null = null;
   try {
     scrapeResult = await scraper.scrape(parsed.href);
   } catch {
-    // scrape failure is non-fatal here; poller will retry on the next cycle
+    // non-fatal — poller will retry
   }
 
-  const fallbackLabel = parsed.pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ?? parsed.href;
+  const fallbackLabel =
+    parsed.pathname.split("/").filter(Boolean).pop()?.replace(/-/g, " ") ?? parsed.href;
   const label = scrapeResult?.label ?? fallbackLabel;
 
   try {
-    const product = addProduct(parsed.href, storeName, label, interaction.user.id);
-
-    const statusText = scrapeResult
-      ? scrapeResult.inStock ? "In Stock" : "Out of Stock"
-      : "Unknown (scrape failed — will retry on next poll)";
-
-    const embed = new EmbedBuilder()
-      .setColor(Colors.Blue)
-      .setTitle("Monitor Added")
-      .addFields(
-        { name: "Product", value: product.label, inline: false },
-        { name: "Store", value: storeName, inline: true },
-        { name: "Currently", value: statusText, inline: true },
-        { name: "ID", value: String(product.id), inline: true },
-      )
-      .setURL(product.url);
-
-    await interaction.editReply({ embeds: [embed] });
+    addProduct(parsed.href, storeName, label, interaction.user.id);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("UNIQUE constraint")) {
-      await interaction.editReply({ content: "That URL is already being monitored." });
-    } else {
-      await interaction.editReply({ content: `Failed to add monitor: ${msg}` });
-    }
-  }
-}
-
-async function handleRemove(interaction: ChatInputCommandInteraction): Promise<void> {
-  const id = interaction.options.getInteger("id", true);
-  const product = getProduct(id);
-
-  if (!product) {
-    await interaction.reply({ content: `No monitor found with ID **${id}**.`, flags: MessageFlags.Ephemeral });
+    await interaction.editReply({
+      content: msg.includes("UNIQUE constraint")
+        ? "That URL is already being monitored."
+        : `Failed to add monitor: ${msg}`,
+    });
     return;
   }
 
-  removeProduct(id);
-  await interaction.reply({
-    content: `Removed monitor for **${product.label}** (ID: ${id}).`,
-    flags: MessageFlags.Ephemeral,
-  });
+  const { embed, components } = buildListPage(listProducts(), 0);
+  await interaction.editReply({ embeds: [embed], components });
 }
 
-async function handleList(interaction: ChatInputCommandInteraction): Promise<void> {
+export async function handleButton(interaction: ButtonInteraction): Promise<void> {
+  const { customId } = interaction;
+
+  if (customId === "monitor:add") {
+    await interaction.showModal(buildAddModal());
+    return;
+  }
+
+  if (customId.startsWith("monitor:nav:")) {
+    const page = parseInt(customId.split(":")[2], 10);
+    const { embed, components } = buildListPage(listProducts(), page);
+    await interaction.update({ embeds: [embed], components });
+    return;
+  }
+}
+
+export async function handleSelectMenu(
+  interaction: StringSelectMenuInteraction,
+): Promise<void> {
+  if (interaction.customId !== "monitor:remove-cmd") return;
+
+  removeProduct(parseInt(interaction.values[0], 10));
+
   const products = listProducts();
-
   if (products.length === 0) {
-    await interaction.reply({ content: "No products are being monitored yet. Use `/monitor add` to add one.", flags: MessageFlags.Ephemeral });
+    await interaction.update({ content: "No more monitors.", components: [] });
     return;
   }
-
-  const storeDisplayNames: Record<string, string> = {
-    hrananetu: "HraNaNetu.cz",
-    cardstore: "CardStore.cz",
-    cdmc: "CDMC.cz",
-    xzone: "Xzone.cz",
-    alza: "Alza.cz",
-  };
-
-  const rows = products.map((p) => {
-    const store = storeDisplayNames[p.store] ?? p.store;
-    const status = p.in_stock ? "✅ In Stock" : "❌ Out of Stock";
-    return `**${p.id}.** [${p.label}](${p.url})\n${store} · ${status}`;
-  });
-
-  const embed = new EmbedBuilder()
-    .setColor(Colors.Blue)
-    .setTitle(`Monitored Products (${products.length})`)
-    .setDescription(rows.join("\n\n"));
-
-  await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-}
-
-async function handleSetChannel(interaction: ChatInputCommandInteraction): Promise<void> {
-  const channel = interaction.options.getChannel("channel", true);
-
-  setConfig("alert_channel_id", channel.id);
-
-  await interaction.reply({
-    content: `Stock alerts will now be sent to <#${channel.id}>.`,
-    flags: MessageFlags.Ephemeral,
-  });
+  const { content, components } = buildRemoveMenu(products);
+  await interaction.update({ content, components });
 }

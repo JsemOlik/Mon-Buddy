@@ -22,20 +22,31 @@ client.once(Events.ClientReady, (c) => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = commands.get(interaction.commandName);
-  if (!command) return;
-
   try {
-    await command.execute(interaction);
+    if (interaction.isChatInputCommand()) {
+      const command = commands.get(interaction.commandName);
+      if (!command) return;
+      await command.execute(interaction);
+    } else if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith("monitor:")) {
+        await monitor.handleModalSubmit(interaction);
+      }
+    } else if (interaction.isButton()) {
+      if (interaction.customId.startsWith("monitor:")) {
+        await monitor.handleButton(interaction);
+      }
+    } else if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith("monitor:")) {
+        await monitor.handleSelectMenu(interaction);
+      }
+    }
   } catch (error) {
     console.error(error);
-    const msg = { content: "An error occurred while executing this command.", ephemeral: true };
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(msg);
-    } else {
-      await interaction.reply(msg);
+    const msg = { content: "An error occurred.", ephemeral: true };
+    if ("replied" in interaction && "deferred" in interaction) {
+      const i = interaction as { replied: boolean; deferred: boolean; followUp: (m: object) => Promise<unknown>; reply: (m: object) => Promise<unknown> };
+      if (i.replied || i.deferred) await i.followUp(msg);
+      else await i.reply(msg);
     }
   }
 });
