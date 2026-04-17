@@ -1,4 +1,4 @@
-import { Client, Collection, Events, GatewayIntentBits } from "discord.js";
+import { Client, Collection, Events, GatewayIntentBits, ActivityType } from "discord.js";
 import type { Command } from "./types.ts";
 import * as ping from "./commands/ping.ts";
 import * as monitor from "./commands/monitor.ts";
@@ -21,6 +21,14 @@ for (const cmd of [ping, monitor, help]) {
 
 client.once(Events.ClientReady, async (c) => {
   console.log(`Logged in as ${c.user.tag}`);
+  c.user.setPresence({
+    status: "online",
+    activities: [{
+      name: "Looking out for you!",
+      type: ActivityType.Streaming,
+      url: "https://www.twitch.tv/pokebuddy",
+    }],
+  });
   monitor.initMonitor(c);
   await startPoller(c);
   startApiServer(c);
