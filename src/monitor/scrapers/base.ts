@@ -3,6 +3,7 @@ export interface ScrapeResult {
   label: string;
   price?: string;
   stockAmount?: string;  // e.g. ">15 ks", "3 ks"
+  imageUrl?: string;
 }
 
 export interface StockScraper {

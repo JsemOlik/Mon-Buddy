@@ -21,6 +21,7 @@ export function buildStockAlert(
   product: ProductRow,
   price?: string,
   stockAmount?: string,
+  imageUrl?: string,
 ): EmbedBuilder {
   const storeName = storeDisplayNames[product.store] ?? product.store;
   const color = storeColors[product.store] ?? Colors.Green;
@@ -36,7 +37,7 @@ export function buildStockAlert(
 
   fields.push({ name: "Link", value: `[View Product](${product.url})`, inline: false });
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle("Back in Stock!")
     .setDescription(`**${product.label}**`)
@@ -44,4 +45,7 @@ export function buildStockAlert(
     .addFields(...fields)
     .setTimestamp()
     .setFooter({ text: `Monitor ID: ${product.id}` });
+
+  if (imageUrl) embed.setImage(imageUrl);
+  return embed;
 }

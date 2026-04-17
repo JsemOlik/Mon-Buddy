@@ -38,21 +38,21 @@ async function checkProduct(client: Client, product: ProductRow): Promise<void> 
 
     if (!wasInStock && result.inStock) {
       console.log(`[monitor] Stock alert: ${product.label}`);
-      await sendAlert(client, product, result.price, result.stockAmount);
+      await sendAlert(client, product, result.price, result.stockAmount, result.imageUrl);
     }
   } catch (err) {
     console.error(`[monitor] Failed to check ${product.url}:`, err);
   }
 }
 
-async function sendAlert(client: Client, product: ProductRow, price?: string, stockAmount?: string): Promise<void> {
+async function sendAlert(client: Client, product: ProductRow, price?: string, stockAmount?: string, imageUrl?: string): Promise<void> {
   const channelId = getConfig("alert_channel_id");
   if (!channelId) return;
 
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isTextBased()) return;
-    await (channel as TextChannel).send({ embeds: [buildStockAlert(product, price, stockAmount)] });
+    await (channel as TextChannel).send({ embeds: [buildStockAlert(product, price, stockAmount, imageUrl)] });
   } catch (err) {
     console.error(`[monitor] Failed to send alert:`, err);
   }

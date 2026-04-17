@@ -38,6 +38,8 @@ export const cardstoreScraper: StockScraper = {
       ?.text.trim()
       .replace(/\s+/g, " ");
 
-    return { inStock, label, price: priceText, stockAmount };
+    const imageUrl = root.querySelector("a.p-main-image img")?.getAttribute("src") ?? undefined;
+
+    return { inStock, label, price: priceText, stockAmount, imageUrl };
   },
 };
