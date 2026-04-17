@@ -12,15 +12,17 @@ export const hrananetuScraper: StockScraper = {
 
     const label = root.querySelector("h1")?.text.trim() ?? url;
 
-    // In-stock signals:
-    //   <abbr ...>..Skladem</abbr>  — primary indicator
-    //   "(X ks na skladě)"          — secondary indicator
-    const bodyText = root.text.toLowerCase();
-    const hasNeni = bodyText.includes("není skladem") || bodyText.includes("vyprodáno");
-    const hasSkladem =
-      bodyText.includes("skladem") ||
-      bodyText.includes("na skladě");
-    const inStock = hasSkladem && !hasNeni;
+    // Target the specific <abbr data-toggle="tooltip"> element that carries the
+    // per-product stock status. Related products further down the page can also
+    // contain "Není skladem" which breaks a full-page text scan.
+    const abbrs = root.querySelectorAll('abbr[data-toggle="tooltip"]');
+    const stockAbbr = abbrs.find((el) => {
+      const t = el.text.toLowerCase();
+      return t.includes("skladem") || t.includes("na skladě");
+    });
+    const inStock =
+      stockAbbr !== undefined &&
+      !stockAbbr.text.toLowerCase().includes("není");
 
     // Price: look for text containing "Kč"
     const priceEl = root.querySelector("strong, .price, [class*='price']");
