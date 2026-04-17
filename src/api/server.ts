@@ -1,10 +1,13 @@
 import type { Client } from "discord.js";
+import { ChannelType } from "discord.js";
 import {
   listProducts,
   listProductsByGuild,
   addProduct,
   removeProduct,
   getProduct,
+  getConfig,
+  setConfig,
 } from "../monitor/db.ts";
 import { getScraperForUrl, getStoreNameForUrl } from "../monitor/scrapers/index.ts";
 
@@ -13,7 +16,7 @@ const CORS_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:3000";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": CORS_ORIGIN,
-  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, X-API-Key",
 };
 
@@ -38,10 +41,34 @@ export function startApiServer(client: Client): void {
       const url = new URL(req.url);
       const path = url.pathname;
 
-      // GET /api/guilds — all guilds the bot is actually present in
+      // GET /api/guilds — all guilds the bot is in
       if (req.method === "GET" && path === "/api/guilds") {
         const guilds = client.guilds.cache.map((g) => g.id);
         return json({ guilds });
+      }
+
+      // GET /api/guilds/:id — guild name + icon
+      const guildMatch = path.match(/^\/api\/guilds\/(\d+)$/);
+      if (req.method === "GET" && guildMatch) {
+        const guild = client.guilds.cache.get(guildMatch[1]);
+        if (!guild) return json({ error: "Guild not found" }, 404);
+        return json({
+          id: guild.id,
+          name: guild.name,
+          icon: guild.icon,
+        });
+      }
+
+      // GET /api/guilds/:id/channels — text channels for the guild
+      const channelsMatch = path.match(/^\/api\/guilds\/(\d+)\/channels$/);
+      if (req.method === "GET" && channelsMatch) {
+        const guild = client.guilds.cache.get(channelsMatch[1]);
+        if (!guild) return json({ error: "Guild not found" }, 404);
+        const channels = guild.channels.cache
+          .filter((c) => c.type === ChannelType.GuildText)
+          .map((c) => ({ id: c.id, name: c.name }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        return json({ channels });
       }
 
       // GET /api/monitors?guild=<id>
@@ -51,7 +78,7 @@ export function startApiServer(client: Client): void {
         return json({ monitors });
       }
 
-      // POST /api/monitors  { url, guildId, addedBy? }
+      // POST /api/monitors — { url, guildId, addedBy? }
       if (req.method === "POST" && path === "/api/monitors") {
         let body: { url?: string; guildId?: string; addedBy?: string };
         try { body = await req.json() as typeof body; } catch {
@@ -95,6 +122,30 @@ export function startApiServer(client: Client): void {
         const id = parseInt(deleteMatch[1], 10);
         if (!getProduct(id)) return json({ error: "Not found" }, 404);
         removeProduct(id);
+        return json({ success: true });
+      }
+
+      // GET /api/config?guild=<id>
+      if (req.method === "GET" && path === "/api/config") {
+        const guildId = url.searchParams.get("guild") ?? "";
+        const alertChannelId =
+          (guildId ? getConfig(`alert_channel_id:${guildId}`) : null) ??
+          getConfig("alert_channel_id") ??
+          "";
+        return json({ alert_channel_id: alertChannelId });
+      }
+
+      // PUT /api/config — { key, value, guildId? }
+      if (req.method === "PUT" && path === "/api/config") {
+        let body: { key?: string; value?: string; guildId?: string };
+        try { body = await req.json() as typeof body; } catch {
+          return json({ error: "Invalid JSON" }, 400);
+        }
+        const key = (body.key ?? "").trim();
+        const value = (body.value ?? "").trim();
+        const guildId = (body.guildId ?? "").trim();
+        if (!key) return json({ error: "key is required" }, 400);
+        setConfig(guildId ? `${key}:${guildId}` : key, value);
         return json({ success: true });
       }
 
