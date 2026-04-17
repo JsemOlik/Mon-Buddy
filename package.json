@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "discord.js": "^14.26.3",
-    "node-html-parser": "^7.1.0"
+    "node-html-parser": "^7.1.0",
+    "undici": "^8.1.0"
   }
 }
