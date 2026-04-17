@@ -2,8 +2,7 @@ import { EmbedBuilder, Colors } from "discord.js";
 import type { ProductRow } from "./db.ts";
 
 const storeDisplayNames: Record<string, string> = {
-  smarty: "Smarty.cz",
-  dracik: "Dráčik.cz",
+  hrananetu: "HranaNetu.cz",
 };
 
 export function buildStockAlert(product: ProductRow, price?: string): EmbedBuilder {

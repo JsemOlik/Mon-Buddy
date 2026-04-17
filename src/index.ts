@@ -3,7 +3,6 @@ import type { Command } from "./types.ts";
 import * as ping from "./commands/ping.ts";
 import * as monitor from "./commands/monitor.ts";
 import { startPoller, stopPoller } from "./monitor/poller.ts";
-import { closeBrowser } from "./monitor/browser.ts";
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error("Missing DISCORD_TOKEN in .env");
@@ -42,7 +41,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 process.once("SIGINT", () => {
   stopPoller();
-  void closeBrowser();
   client.destroy();
   process.exit(0);
 });

@@ -5,8 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run src/index.ts",
-    "deploy": "bun run src/deploy-commands.ts",
-    "setup": "bunx playwright install chromium"
+    "deploy": "bun run src/deploy-commands.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -16,7 +15,6 @@
   },
   "dependencies": {
     "discord.js": "^14.26.3",
-    "node-html-parser": "^7.1.0",
-    "playwright": "^1.59.1"
+    "node-html-parser": "^7.1.0"
   }
 }
