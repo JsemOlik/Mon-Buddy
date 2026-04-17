@@ -5,6 +5,7 @@ import * as monitor from "./commands/monitor.ts";
 import * as help from "./commands/help.ts";
 import { startPoller, stopPoller } from "./monitor/poller.ts";
 import { closeBrowser } from "./monitor/browser.ts";
+import { startApiServer } from "./api/server.ts";
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error("Missing DISCORD_TOKEN in .env");
@@ -20,6 +21,7 @@ for (const cmd of [ping, monitor, help]) {
 client.once(Events.ClientReady, (c) => {
   console.log(`Logged in as ${c.user.tag}`);
   startPoller(c);
+  startApiServer();
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

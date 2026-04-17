@@ -14,9 +14,13 @@ db.run(`
     in_stock     INTEGER NOT NULL DEFAULT 0,
     last_checked INTEGER,
     added_by     TEXT    NOT NULL,
-    added_at     INTEGER NOT NULL
+    added_at     INTEGER NOT NULL,
+    guild_id     TEXT    NOT NULL DEFAULT ''
   )
 `);
+
+// Migrate existing installs that predate guild_id
+try { db.run(`ALTER TABLE monitored_products ADD COLUMN guild_id TEXT NOT NULL DEFAULT ''`); } catch { /* already exists */ }
 
 db.run(`
   CREATE TABLE IF NOT EXISTS config (
@@ -48,12 +52,17 @@ export interface ProductRow {
   last_checked: number | null;
   added_by: string;
   added_at: number;
+  guild_id: string;
 }
 
-const stmtAdd = db.prepare<ProductRow, [string, string, string, string, number]>(
-  `INSERT INTO monitored_products (url, store, label, added_by, added_at)
-   VALUES (?1, ?2, ?3, ?4, ?5)
+const stmtAdd = db.prepare<ProductRow, [string, string, string, string, number, string]>(
+  `INSERT INTO monitored_products (url, store, label, added_by, added_at, guild_id)
+   VALUES (?1, ?2, ?3, ?4, ?5, ?6)
    RETURNING *`
+);
+
+const stmtListByGuild = db.prepare<ProductRow, [string]>(
+  `SELECT * FROM monitored_products WHERE guild_id = ?1 ORDER BY added_at DESC`
 );
 
 const stmtRemove = db.prepare<{ id: number }, [number]>(
@@ -85,10 +94,14 @@ const stmtLogEvent = db.prepare<void, [number, string, number]>(
   `INSERT INTO stock_events (product_id, event, detected_at) VALUES (?1, ?2, ?3)`
 );
 
-export function addProduct(url: string, store: string, label: string, addedBy: string): ProductRow {
-  const row = stmtAdd.get(url, store, label, addedBy, Date.now());
+export function addProduct(url: string, store: string, label: string, addedBy: string, guildId = ""): ProductRow {
+  const row = stmtAdd.get(url, store, label, addedBy, Date.now(), guildId);
   if (!row) throw new Error("Failed to insert product");
   return row;
+}
+
+export function listProductsByGuild(guildId: string): ProductRow[] {
+  return stmtListByGuild.all(guildId);
 }
 
 export function removeProduct(id: number): boolean {
