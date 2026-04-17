@@ -185,7 +185,7 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
 
 async function handleSetChannel(interaction: ChatInputCommandInteraction): Promise<void> {
   const channel = interaction.options.getChannel("channel", true);
-  setConfig("alert_channel_id", channel.id);
+  setConfig(`alert_channel_id:${interaction.guildId ?? ""}`, channel.id);
   await interaction.reply({
     content: `Stock alerts will now be sent to <#${channel.id}>.`,
     flags: MessageFlags.Ephemeral,

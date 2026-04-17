@@ -46,7 +46,10 @@ async function checkProduct(client: Client, product: ProductRow): Promise<void> 
 }
 
 async function sendAlert(client: Client, product: ProductRow, price?: string, stockAmount?: string, imageUrl?: string): Promise<void> {
-  const channelId = getConfig("alert_channel_id");
+  const channelId =
+    (product.guild_id ? getConfig(`alert_channel_id:${product.guild_id}`) : null) ??
+    getConfig("alert_channel_id") ??
+    "";
   if (!channelId) return;
 
   try {
