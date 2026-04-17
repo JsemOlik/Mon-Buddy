@@ -52,7 +52,8 @@ async function sendAlert(client: Client, product: ProductRow, price?: string, st
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isTextBased()) return;
-    await (channel as TextChannel).send({ embeds: [buildStockAlert(product, price, stockAmount, imageUrl)] });
+    const { embed, row } = buildStockAlert(product, price, stockAmount, imageUrl);
+    await (channel as TextChannel).send({ embeds: [embed], components: [row] });
   } catch (err) {
     console.error(`[monitor] Failed to send alert:`, err);
   }

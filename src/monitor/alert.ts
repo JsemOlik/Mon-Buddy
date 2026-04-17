@@ -1,4 +1,4 @@
-import { EmbedBuilder, Colors } from "discord.js";
+import { EmbedBuilder, Colors, ButtonBuilder, ButtonStyle, ActionRowBuilder } from "discord.js";
 import type { ProductRow } from "./db.ts";
 
 const storeDisplayNames: Record<string, string> = {
@@ -22,7 +22,7 @@ export function buildStockAlert(
   price?: string,
   stockAmount?: string,
   imageUrl?: string,
-): EmbedBuilder {
+): { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> } {
   const storeName = storeDisplayNames[product.store] ?? product.store;
   const color = storeColors[product.store] ?? Colors.Green;
 
@@ -35,8 +35,6 @@ export function buildStockAlert(
     fields.push({ name: "In Stock", value: stockAmount, inline: true });
   }
 
-  fields.push({ name: "Link", value: `[View Product](${product.url})`, inline: false });
-
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle("Back in Stock!")
@@ -47,5 +45,13 @@ export function buildStockAlert(
     .setFooter({ text: `Monitor ID: ${product.id}` });
 
   if (imageUrl) embed.setImage(imageUrl);
-  return embed;
+
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setLabel("View Product")
+      .setURL(product.url)
+      .setStyle(ButtonStyle.Link),
+  );
+
+  return { embed, row };
 }
