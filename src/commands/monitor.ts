@@ -74,7 +74,7 @@ async function handleAdd(interaction: ChatInputCommandInteraction): Promise<void
   const storeName = getStoreNameForUrl(parsed.href);
   if (!storeName) {
     await interaction.reply({
-      content: `Unsupported store. Currently supported: **HranaNetu.cz**, **CardStore.cz**, **CDMC.cz**, **Xzone.cz**.`,
+      content: `Unsupported store. Currently supported: **HranaNetu.cz**, **CardStore.cz**, **CDMC.cz**, **Xzone.cz**, **Alza.cz**.`,
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -152,6 +152,7 @@ async function handleList(interaction: ChatInputCommandInteraction): Promise<voi
     cardstore: "CardStore.cz",
     cdmc: "CDMC.cz",
     xzone: "Xzone.cz",
+    alza: "Alza.cz",
   };
 
   const rows = products.map((p) => {

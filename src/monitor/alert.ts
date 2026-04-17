@@ -6,13 +6,15 @@ const storeDisplayNames: Record<string, string> = {
   cardstore: "CardStore.cz",
   cdmc:      "CDMC.cz",
   xzone:     "Xzone.cz",
+  alza:      "Alza.cz",
 };
 
 const storeColors: Record<string, number> = {
   hrananetu: 0x4b0082, // dark purple
   cardstore: 0xffd700, // gold
   cdmc:      0xe74c3c, // red
-  xzone:     Colors.Green, // default green until user picks a color
+  xzone:     0xEB6524, // orange
+  alza:      0xe2001a, // alza red
 };
 
 export function buildStockAlert(
