@@ -28,6 +28,9 @@ export const xzoneScraper: StockScraper = {
     const priceValue = root.querySelector('span[itemprop="price"]')?.text.trim();
     const price = priceValue ? `${priceValue} Kč` : undefined;
 
-    return { inStock, label, price, stockAmount };
+    // Use the href on the image anchor — it points to the larger 600w version
+    const imageUrl = root.querySelector('.big_image_holder a[itemprop="image"]')?.getAttribute("href") ?? undefined;
+
+    return { inStock, label, price, stockAmount, imageUrl };
   },
 };

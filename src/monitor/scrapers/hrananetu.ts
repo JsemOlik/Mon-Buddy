@@ -32,6 +32,9 @@ export const hrananetuScraper: StockScraper = {
       .replace(/\s+/g, " ")
       .trim() || undefined;
 
-    return { inStock, label, price, stockAmount };
+    // First active carousel item = main product image
+    const imageUrl = root.querySelector("figure.carousel-item.active img")?.getAttribute("src") ?? undefined;
+
+    return { inStock, label, price, stockAmount, imageUrl };
   },
 };
