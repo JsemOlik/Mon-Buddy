@@ -2,7 +2,7 @@ import type { Client } from "discord.js";
 import { ActivityType } from "discord.js";
 import { listProducts } from "./monitor/db.ts";
 
-const INTERVAL_MS = 20_000;
+const INTERVAL_MS = 30_000;
 
 function formatUptime(ms: number): string {
   const h = Math.floor(ms / 3_600_000);
