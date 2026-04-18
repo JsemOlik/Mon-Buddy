@@ -3,9 +3,8 @@ import { listProducts, setStock, getConfig, type ProductRow } from "./db.ts";
 import { getScraperForUrl } from "./scrapers/index.ts";
 import { buildStockAlert } from "./alert.ts";
 
-// Alza and Smarty route through EzSolver (real Chromium), which is much slower
-// than a plain fetch — poll them less frequently to avoid overloading the solver.
-const SLOW_STORES = new Set(["alza", "smarty"]);
+// Alza routes through EzSolver (real Chromium) — poll it less frequently to avoid overloading the solver.
+const SLOW_STORES = new Set(["alza"]);
 const SLOW_INTERVAL_MS = 120_000; // 2 min
 const FAST_INTERVAL_MS = 30_000;  // 30 sec
 
