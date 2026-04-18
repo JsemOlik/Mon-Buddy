@@ -1,4 +1,4 @@
-import { Client, Collection, Events, GatewayIntentBits, ActivityType } from "discord.js";
+import { Client, Collection, Events, GatewayIntentBits } from "discord.js";
 import type { Command } from "./types.ts";
 import * as ping from "./commands/ping.ts";
 import * as monitor from "./commands/monitor.ts";
@@ -7,6 +7,7 @@ import { startPoller, stopPoller } from "./monitor/poller.ts";
 import { closeBrowser } from "./monitor/browser.ts";
 import { startApiServer } from "./api/server.ts";
 import { initDb } from "./monitor/db.ts";
+import { startPresenceRotation } from "./presence.ts";
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) throw new Error("Missing DISCORD_TOKEN in .env");
@@ -21,13 +22,7 @@ for (const cmd of [ping, monitor, help]) {
 
 client.once(Events.ClientReady, async (c) => {
   console.log(`Logged in as ${c.user.tag}`);
-  c.user.setPresence({
-    status: "online",
-    activities: [{
-      name: "Pokémon!",
-      type: ActivityType.Playing,
-    }],
-  });
+  startPresenceRotation(c);
   monitor.initMonitor(c);
   await startPoller(c);
   startApiServer(c);
