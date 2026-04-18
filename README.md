@@ -16,34 +16,34 @@ A Discord bot that monitors Czech Pokémon card stores for restocks and notifies
 ┌───────────────────────────────────────────────────────────────┐
 │                      Discord Bot (Bun)                        │
 │                                                               │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐ │
-│  │  Commands   │  │   Poller     │  │   REST API (:4040)   │ │
-│  │  /monitor   │  │  every 30s   │  │  X-API-Key auth      │ │
-│  │  /help      │  │  per-product │  │  CRUD + guild info   │ │
-│  │  /ping      │  │  rate limits │  └──────────┬───────────┘ │
-│  └─────────────┘  └──────┬───────┘             │             │
-│                          │                     │             │
-│           ┌──────────────▼──────────────────┐  │             │
-│           │          Scrapers               │  │             │
-│           │  hrananetu · cardstore · cdmc   │  │             │
-│           │  xzone  ──── direct fetch ────  │  │             │
-│           │  alza · smarty ── EzSolver ──┐  │  │             │
-│           └─────────────────────────────┼──┘  │             │
-│                                         │     │             │
-│  ┌──────────────────────────────────┐   │     │             │
-│  │   Database (SQLite / PostgreSQL) │   │     │             │
-│  │   monitored_products             │   │     │             │
-│  │   config  ·  stock_events        │   │     │             │
-│  └──────────────────────────────────┘   │     │             │
-└─────────────────────────────────────────┼─────┼─────────────┘
-                                          │     │
-          ┌───────────────────────────────▼─┐   │
+│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │  Commands   │  │   Poller     │  │   REST API (:4040)   │  │
+│  │  /monitor   │  │  every 30s   │  │  X-API-Key auth      │  │
+│  │  /help      │  │  per-product │  │  CRUD + guild info   │  │
+│  │  /ping      │  │  rate limits │  └──────────┬───────────┘  │
+│  └─────────────┘  └──────┬───────┘             │              │
+│                          │                     │              │
+│           ┌──────────────▼──────────────────┐  │              │
+│           │          Scrapers               │  │              │
+│           │  hrananetu · cardstore · cdmc   │  │              │
+│           │  xzone  ──── direct fetch ────  │  │              │
+│           │  alza · smarty ── EzSolver ──┐  │  │              │
+│           └──────────────────────────────┼──┘  │              │
+│                                          │     │              │
+│  ┌──────────────────────────────────┐    │     │              │
+│  │   Database (SQLite / PostgreSQL) │    │     │              │
+│  │   monitored_products             │    │     │              │
+│  │   config  ·  stock_events        │    │     │              │
+│  └──────────────────────────────────┘    │     │              │
+└──────────────────────────────────────────┼─────┼──────────────┘
+                                           │     │
+          ┌────────────────────────────────▼─┐   │
           │     EzSolver (Python + nodriver) │   │
           │     Headless Chromium, port 8191 │   │
           │     Bypasses anti-bot pages      │   │
-          └─────────────────────────────────┘   │
-                                                │
-┌───────────────────────────────────────────────▼─────────────┐
+          └──────────────────────────────────┘   │
+                                                 │
+┌────────────────────────────────────────────────▼─────────────┐
 │              Web Dashboard (Next.js on Vercel)               │
 │                                                              │
 │  Discord OAuth (NextAuth v5)                                 │
