@@ -1,5 +1,5 @@
 {
-  "name": "poke-buddy",
+  "name": "mon-buddy",
   "module": "src/index.ts",
   "type": "module",
   "private": true,

@@ -36,5 +36,5 @@ chromium-data/
 # Finder (MacOS) folder config
 .DS_Store
 
-poke-buddy.db
-poke-buddy.db*
+mon-buddy.db
+mon-buddy.db*

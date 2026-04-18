@@ -64,7 +64,7 @@ export async function initDb(): Promise<void> {
     return;
   }
 
-  db = new Database("poke-buddy.db", { create: true });
+  db = new Database("mon-buddy.db", { create: true });
   db.run("PRAGMA foreign_keys = ON");
   db.run("PRAGMA journal_mode = WAL");
   db.run(`

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Poke-Buddy is a Discord.js bot built with Bun runtime and TypeScript. It is currently in early development — only the boilerplate scaffold exists.
+Mon-Buddy is a Discord.js bot built with Bun runtime and TypeScript. It is currently in early development — only the boilerplate scaffold exists.
 
 ## Commands
 

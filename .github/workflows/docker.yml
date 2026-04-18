@@ -35,8 +35,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/jsemolik/poke-buddy-bot:latest
-            ghcr.io/jsemolik/poke-buddy-bot:${{ github.event.inputs.version }}
+            ghcr.io/jsemolik/mon-buddy-bot:latest
+            ghcr.io/jsemolik/mon-buddy-bot:${{ github.event.inputs.version }}
 
       - name: Build & push solver
         uses: docker/build-push-action@v6
@@ -47,5 +47,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/jsemolik/poke-buddy-solver:latest
-            ghcr.io/jsemolik/poke-buddy-solver:${{ github.event.inputs.version }}
+            ghcr.io/jsemolik/mon-buddy-solver:latest
+            ghcr.io/jsemolik/mon-buddy-solver:${{ github.event.inputs.version }}

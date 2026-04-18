@@ -7,7 +7,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
   const embed = new EmbedBuilder()
     .setColor(Colors.Green)
-    .setTitle("Poke-Buddy — Commands")
+    .setTitle("Mon Buddy — Commands")
     .addFields(
       {
         name: "/monitor add",

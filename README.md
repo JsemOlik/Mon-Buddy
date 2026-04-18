@@ -1,4 +1,4 @@
-# Poke Buddy
+# Mon Buddy
 
 A Discord bot that monitors Czech Pokémon card stores for restocks and notifies a configured channel when a product comes back in stock. Includes a Next.js web dashboard for managing monitors without needing to type slash commands.
 
@@ -75,7 +75,7 @@ Runs as a separate process/container. The bot talks to it via `POST /fetch`.
 A Next.js 16 app deployed to Vercel. Users sign in with Discord OAuth (NextAuth v5). The UI shows servers the user can manage, and lets them add/remove monitors and pick an alert channel — all by calling the bot's REST API.
 
 ### Database
-Dual-mode: **SQLite** (local dev, `poke-buddy.db`) or **PostgreSQL** (production, set `DATABASE_URL=postgres://...`). Switched automatically at startup based on the `DATABASE_URL` env var.
+Dual-mode: **SQLite** (local dev, `mon-buddy.db`) or **PostgreSQL** (production, set `DATABASE_URL=postgres://...`). Switched automatically at startup based on the `DATABASE_URL` env var.
 
 ---
 
@@ -149,7 +149,7 @@ bun run dev
 | Variable | Description |
 |---|---|
 | `AUTH_SECRET` | Random secret for NextAuth JWT signing |
-| `AUTH_URL` | Full URL of the web app (e.g. `https://poke-buddy-web.vercel.app`) |
+| `AUTH_URL` | Full URL of the web app (e.g. `https://mon-buddy-web.vercel.app`) |
 | `DISCORD_CLIENT_ID` | Discord OAuth app client ID |
 | `DISCORD_CLIENT_SECRET` | Discord OAuth app client secret |
 | `BOT_API_URL` | URL of the bot REST API |
@@ -168,5 +168,5 @@ docker compose up -d
 ```
 
 Images:
-- `ghcr.io/jsemolik/poke-buddy-bot:latest`
-- `ghcr.io/jsemolik/poke-buddy-solver:latest`
+- `ghcr.io/jsemolik/mon-buddy-bot:latest`
+- `ghcr.io/jsemolik/mon-buddy-solver:latest`
