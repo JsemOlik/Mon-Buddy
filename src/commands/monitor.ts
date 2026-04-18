@@ -135,7 +135,7 @@ function buildListPage(
   } else {
     const rows = slice.map((p) => {
       const store = storeDisplayNames[p.store] ?? p.store;
-      const status = p.in_stock ? "✅" : "❌";
+      const status = p.stock === "in-stock" ? "✅" : p.stock === "pre-order" ? "🔵" : "❌";
       return `**${p.id}.** ${status} [${p.label}](${p.url})\n↳ ${store}`;
     });
     embed
@@ -232,7 +232,7 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction): Pr
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const scraper = getScraperForUrl(parsed.href)!;
-  let scrapeResult: { inStock: boolean; label: string } | null = null;
+  let scrapeResult: { stock: string; label: string } | null = null;
   try {
     scrapeResult = await scraper.scrape(parsed.href);
   } catch {

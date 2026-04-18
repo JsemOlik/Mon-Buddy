@@ -1,11 +1,12 @@
 import { Database } from "bun:sqlite";
+import type { StockStatus } from "./scrapers/base.ts";
 
 export interface ProductRow {
   id: number;
   url: string;
   store: string;
   label: string;
-  in_stock: 0 | 1;
+  stock: StockStatus;
   last_checked: number | null;
   added_by: string;
   added_at: number;
@@ -33,13 +34,16 @@ export async function initDb(): Promise<void> {
         url          TEXT    NOT NULL UNIQUE,
         store        TEXT    NOT NULL,
         label        TEXT    NOT NULL,
-        in_stock     INTEGER NOT NULL DEFAULT 0,
+        stock        TEXT    NOT NULL DEFAULT 'not-in-stock',
         last_checked BIGINT,
         added_by     TEXT    NOT NULL,
         added_at     BIGINT  NOT NULL,
         guild_id     TEXT    NOT NULL DEFAULT ''
       )
     `;
+    // Migrate legacy in_stock column if it exists
+    await sql`ALTER TABLE monitored_products ADD COLUMN IF NOT EXISTS stock TEXT NOT NULL DEFAULT 'not-in-stock'`;
+    await sql`UPDATE monitored_products SET stock = 'in-stock' WHERE in_stock = 1 AND stock = 'not-in-stock'`;
     await sql`
       CREATE TABLE IF NOT EXISTS config (
         key   TEXT PRIMARY KEY,
@@ -69,13 +73,16 @@ export async function initDb(): Promise<void> {
       url          TEXT    NOT NULL UNIQUE,
       store        TEXT    NOT NULL,
       label        TEXT    NOT NULL,
-      in_stock     INTEGER NOT NULL DEFAULT 0,
+      stock        TEXT    NOT NULL DEFAULT 'not-in-stock',
       last_checked INTEGER,
       added_by     TEXT    NOT NULL,
       added_at     INTEGER NOT NULL,
       guild_id     TEXT    NOT NULL DEFAULT ''
     )
   `);
+  // Migrations for existing databases
+  try { db.run(`ALTER TABLE monitored_products ADD COLUMN stock TEXT NOT NULL DEFAULT 'not-in-stock'`); } catch { /* already exists */ }
+  try { db.run(`UPDATE monitored_products SET stock = 'in-stock' WHERE in_stock = 1 AND stock = 'not-in-stock'`); } catch { /* in_stock column may not exist */ }
   try { db.run(`ALTER TABLE monitored_products ADD COLUMN guild_id TEXT NOT NULL DEFAULT ''`); } catch { /* already exists */ }
   db.run(`
     CREATE TABLE IF NOT EXISTS config (
@@ -104,7 +111,7 @@ function pgRow(row: Record<string, unknown>): ProductRow {
     url: row["url"] as string,
     store: row["store"] as string,
     label: row["label"] as string,
-    in_stock: Number(row["in_stock"]) as 0 | 1,
+    stock: (row["stock"] as StockStatus) ?? "not-in-stock",
     last_checked: row["last_checked"] != null ? Number(row["last_checked"]) : null,
     added_by: row["added_by"] as string,
     added_at: Number(row["added_at"]),
@@ -186,22 +193,20 @@ export async function getProduct(id: number): Promise<ProductRow | null> {
   ).get(id) ?? null;
 }
 
-// Updates in_stock flag and appends a timestamped event row for history.
-export async function setInStock(id: number, inStock: boolean): Promise<void> {
+// Updates the stock status and appends a timestamped event row for history.
+export async function setStock(id: number, stock: StockStatus): Promise<void> {
   const now = Date.now();
-  const val = inStock ? 1 : 0;
-  const event = inStock ? "in_stock" : "out_of_stock";
   if (USE_PG) {
-    await sql`UPDATE monitored_products SET in_stock = ${val}, last_checked = ${now} WHERE id = ${id}`;
-    await sql`INSERT INTO stock_events (product_id, event, detected_at) VALUES (${id}, ${event}, ${now})`;
+    await sql`UPDATE monitored_products SET stock = ${stock}, last_checked = ${now} WHERE id = ${id}`;
+    await sql`INSERT INTO stock_events (product_id, event, detected_at) VALUES (${id}, ${stock}, ${now})`;
     return;
   }
-  db!.prepare<void, [number, number, number]>(
-    `UPDATE monitored_products SET in_stock = ?1, last_checked = ?2 WHERE id = ?3`,
-  ).run(val, now, id);
+  db!.prepare<void, [string, number, number]>(
+    `UPDATE monitored_products SET stock = ?1, last_checked = ?2 WHERE id = ?3`,
+  ).run(stock, now, id);
   db!.prepare<void, [number, string, number]>(
     `INSERT INTO stock_events (product_id, event, detected_at) VALUES (?1, ?2, ?3)`,
-  ).run(id, event, now);
+  ).run(id, stock, now);
 }
 
 export async function getConfig(key: string): Promise<string | null> {

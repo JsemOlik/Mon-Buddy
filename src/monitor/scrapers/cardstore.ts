@@ -24,6 +24,7 @@ export const cardstoreScraper: StockScraper = {
     const inStock =
       availText.length > 0 &&
       !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
 
     // "(>5 ks)" → ">5 ks"
     const stockAmount = root
@@ -40,6 +41,6 @@ export const cardstoreScraper: StockScraper = {
 
     const imageUrl = root.querySelector("a.p-main-image img")?.getAttribute("src") ?? undefined;
 
-    return { inStock, label, price: priceText, stockAmount, imageUrl };
+    return { stock, label, price: priceText, stockAmount, imageUrl };
   },
 };

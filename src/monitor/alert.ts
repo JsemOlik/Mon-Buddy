@@ -21,12 +21,13 @@ const storeColors: Record<string, number> = {
 
 export function buildStockAlert(
   product: ProductRow,
+  alertType: "in-stock" | "pre-order",
   price?: string,
   stockAmount?: string,
   imageUrl?: string,
 ): { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> } {
   const storeName = storeDisplayNames[product.store] ?? product.store;
-  const color = storeColors[product.store] ?? Colors.Green;
+  const color = alertType === "pre-order" ? Colors.Blue : (storeColors[product.store] ?? Colors.Green);
 
   const fields: { name: string; value: string; inline: boolean }[] = [
     { name: "Store", value: storeName, inline: true },
@@ -34,12 +35,14 @@ export function buildStockAlert(
   ];
 
   if (stockAmount) {
-    fields.push({ name: "In Stock", value: stockAmount, inline: true });
+    fields.push({ name: alertType === "pre-order" ? "Pre-order Qty" : "In Stock", value: stockAmount, inline: true });
   }
+
+  const title = alertType === "pre-order" ? "Pre-order Available!" : "Back in Stock!";
 
   const embed = new EmbedBuilder()
     .setColor(color)
-    .setTitle("Back in Stock!")
+    .setTitle(title)
     .setDescription(`**${product.label}**`)
     .setURL(product.url)
     .addFields(...fields)
@@ -50,7 +53,7 @@ export function buildStockAlert(
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setLabel("View Product")
+      .setLabel(alertType === "pre-order" ? "Pre-order Now" : "View Product")
       .setURL(product.url)
       .setStyle(ButtonStyle.Link),
   );

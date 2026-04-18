@@ -1,5 +1,5 @@
 import type { Client, TextChannel } from "discord.js";
-import { listProducts, setInStock, getConfig, type ProductRow } from "./db.ts";
+import { listProducts, setStock, getConfig, type ProductRow } from "./db.ts";
 import { getScraperForUrl } from "./scrapers/index.ts";
 import { buildStockAlert } from "./alert.ts";
 
@@ -42,7 +42,7 @@ async function runPollCycle(client: Client): Promise<void> {
   }
 }
 
-// Scrapes one product and fires an alert if it just came back into stock.
+// Scrapes one product and fires an alert on stock status transitions.
 // Per-store rate limiting is applied here unless `force` is true (e.g. /monitor check).
 async function checkProduct(client: Client, product: ProductRow, force = false): Promise<void> {
   if (!force) {
@@ -55,14 +55,18 @@ async function checkProduct(client: Client, product: ProductRow, force = false):
 
   try {
     const result = await scraper.scrape(product.url);
-    const wasInStock = product.in_stock === 1;
+    const prevStock = product.stock;
 
-    await setInStock(product.id, result.inStock);
+    await setStock(product.id, result.stock);
 
-    // Only alert on a transition from out-of-stock → in-stock, not on every check.
-    if (!wasInStock && result.inStock) {
+    // Alert on any transition into an orderable state (in-stock or pre-order),
+    // but only when the status actually changes — not on every check.
+    if (prevStock !== "in-stock" && result.stock === "in-stock") {
       console.log(`[monitor] Stock alert: ${product.label}`);
-      await sendAlert(client, product, result.price, result.stockAmount, result.imageUrl);
+      await sendAlert(client, product, "in-stock", result.price, result.stockAmount, result.imageUrl);
+    } else if (prevStock !== "pre-order" && prevStock !== "in-stock" && result.stock === "pre-order") {
+      console.log(`[monitor] Pre-order alert: ${product.label}`);
+      await sendAlert(client, product, "pre-order", result.price, result.stockAmount, result.imageUrl);
     }
   } catch (err) {
     console.error(`[monitor] Failed to check ${product.url}:`, err);
@@ -78,6 +82,7 @@ export async function checkProductNow(client: Client, product: ProductRow): Prom
 async function sendAlert(
   client: Client,
   product: ProductRow,
+  alertType: "in-stock" | "pre-order",
   price?: string,
   stockAmount?: string,
   imageUrl?: string,
@@ -92,7 +97,7 @@ async function sendAlert(
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isTextBased()) return;
-    const { embed, row } = buildStockAlert(product, price, stockAmount, imageUrl);
+    const { embed, row } = buildStockAlert(product, alertType, price, stockAmount, imageUrl);
     await (channel as TextChannel).send({ embeds: [embed], components: [row] });
   } catch (err) {
     console.error(`[monitor] Failed to send alert:`, err);

@@ -21,6 +21,7 @@ export const cdmcScraper: StockScraper = {
     const inStock =
       availText.length > 0 &&
       !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
 
     // Stock amount — innermost span holds the clean value, e.g. ">15 ks"
     const stockAmount = root
@@ -36,6 +37,6 @@ export const cdmcScraper: StockScraper = {
 
     const imageUrl = root.querySelector("a.p-main-image img")?.getAttribute("src") ?? undefined;
 
-    return { inStock, label, price: priceText, stockAmount, imageUrl };
+    return { stock, label, price: priceText, stockAmount, imageUrl };
   },
 };

@@ -1,5 +1,7 @@
+export type StockStatus = "in-stock" | "pre-order" | "not-in-stock";
+
 export interface ScrapeResult {
-  inStock: boolean;
+  stock: StockStatus;
   label: string;
   price?: string;
   stockAmount?: string;  // e.g. ">15 ks", "3 ks"

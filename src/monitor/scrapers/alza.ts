@@ -1,6 +1,5 @@
 import { parse } from "node-html-parser";
 import type { StockScraper, ScrapeResult } from "./base.ts";
-
 const SOLVER_URL = process.env.SOLVER_URL ?? "http://127.0.0.1:8191";
 const OUT_OF_STOCK_PHRASES = ["není skladem", "nedostupné", "vyprodáno"];
 
@@ -38,6 +37,7 @@ export const alzaScraper: StockScraper = {
       availText.length > 0 &&
       availText.includes("skladem") &&
       !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
 
     const rawAvail = availBtn?.text.trim() ?? "";
     const stockAmount = rawAvail.replace(/^skladem\s*/i, "").trim() || undefined;
@@ -51,7 +51,7 @@ export const alzaScraper: StockScraper = {
       ? rawSrc.replace(/([?&]width=)\d+/, "$1500").replace(/([?&]height=)\d+/, "$1500")
       : undefined;
 
-    console.log(`[alza] Done — inStock=${inStock}, label="${label}"`);
-    return { inStock, label, price, stockAmount, imageUrl };
+    console.log(`[alza] Done — stock=${stock}, label="${label}"`);
+    return { stock, label, price, stockAmount, imageUrl };
   },
 };

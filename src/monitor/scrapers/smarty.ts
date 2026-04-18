@@ -34,6 +34,7 @@ export const smartyScraper: StockScraper = {
     // Schema.org availability is the most reliable indicator
     const availHref = root.querySelector('link[itemprop="availability"]')?.getAttribute("href") ?? "";
     const inStock = availHref.toLowerCase().includes("instock");
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
 
     // Quantity lives in the <b> inside the green stock span
     const stockAmount = root.querySelector(".toStoreInfo .color-green b")?.text.trim() || undefined;
@@ -45,7 +46,7 @@ export const smartyScraper: StockScraper = {
     // First active gallery slide
     const imageUrl = root.querySelector(".gallery-item.tns-slide-active img")?.getAttribute("src") ?? undefined;
 
-    console.log(`[smarty] Done — inStock=${inStock}, label="${label}"`);
-    return { inStock, label, price, stockAmount, imageUrl };
+    console.log(`[smarty] Done — stock=${stock}, label="${label}"`);
+    return { stock, label, price, stockAmount, imageUrl };
   },
 };

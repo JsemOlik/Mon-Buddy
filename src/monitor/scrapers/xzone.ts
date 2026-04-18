@@ -17,6 +17,7 @@ export const xzoneScraper: StockScraper = {
       .querySelector('span[itemprop="availability"]')
       ?.text.trim().toLowerCase() ?? "";
     const inStock = availText === "instock";
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
 
     // "Skladem 1 ks" → strip leading "Skladem" → "1 ks"
     const stockText = root
@@ -31,6 +32,6 @@ export const xzoneScraper: StockScraper = {
     // Use the href on the image anchor — it points to the larger 600w version
     const imageUrl = root.querySelector('.big_image_holder a[itemprop="image"]')?.getAttribute("href") ?? undefined;
 
-    return { inStock, label, price, stockAmount, imageUrl };
+    return { stock, label, price, stockAmount, imageUrl };
   },
 };
