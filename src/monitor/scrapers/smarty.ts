@@ -1,46 +1,52 @@
 import { parse } from "node-html-parser";
 import type { StockScraper, ScrapeResult } from "./base.ts";
-import { fetchHtml, fetchXhr } from "./base.ts";
 
-// URL format: https://www.smarty.cz/Some-Product-Name--{variantId}p{productId}
-// The stock info endpoint only needs the numeric productId.
-function extractProductId(url: string): string | null {
-  const match = new URL(url).pathname.match(/p(\d+)$/);
-  return match?.[1] ?? null;
-}
+const SOLVER_URL = process.env.SOLVER_URL ?? "http://127.0.0.1:8191";
 
 export const smartyScraper: StockScraper = {
   storeName: "smarty",
   hostPattern: /smarty\.cz$/,
 
   async scrape(url: string): Promise<ScrapeResult> {
-    const productId = extractProductId(url);
-    if (!productId) throw new Error(`Could not extract product ID from Smarty URL: ${url}`);
+    console.log(`[smarty] Fetching via solver service: ${url}`);
 
-    // The StoreInfoItems endpoint is a plain HTML partial with no Cloudflare protection —
-    // no EzSolver or headless browser needed.
-    const stockUrl = `https://www.smarty.cz/Products/Product/StoreInfoItems?productId=${productId}&productImeiId=null&query=&latitude=null&longitude=null&inStock=false&buyoutCategoryId=null&discountPromo=&onlyShops=false`;
-    const html = await fetchXhr(stockUrl, url);
-    const root = parse(html);
-
-    // Sum up stock across all locations — each in-stock row reads "Skladem celkem X ks".
-    let totalStock = 0;
-    for (const el of root.querySelectorAll(".storeInfo-item-status")) {
-      const match = el.text.trim().match(/Skladem celkem\s+(\d+)\s*ks/i);
-      if (match) totalStock += parseInt(match[1]!, 10);
+    let html: string;
+    try {
+      const res = await fetch(`${SOLVER_URL}/fetch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, wait: 15 }),
+      });
+      const data = await res.json() as { html?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? res.statusText);
+      html = data.html!;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("ECONNREFUSED") || msg.includes("Connection refused")) {
+        throw new Error("Smarty requires the EzSolver service — run `python ez-solver/service.py` in a separate terminal first.");
+      }
+      throw err;
     }
 
-    const stock: ScrapeResult["stock"] = totalStock > 0 ? "in-stock" : "not-in-stock";
-    const stockAmount = totalStock > 0 ? `${totalStock} ks celkem` : undefined;
+    const root = parse(html);
+    const label = root.querySelector("h1")?.text.trim() ?? url;
 
-    // Product page may be Cloudflare-protected — best-effort label fetch, fallback to URL slug.
-    let label = url;
-    try {
-      const pageHtml = await fetchHtml(url);
-      label = parse(pageHtml).querySelector("h1")?.text.trim() ?? url;
-    } catch { /* Cloudflare blocked — caller already stores a slug-based label on first add */ }
+    // Schema.org availability link is the most reliable signal
+    const availHref = root.querySelector('link[itemprop="availability"]')?.getAttribute("href") ?? "";
+    const inStock = availHref.toLowerCase().includes("instock");
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
 
-    console.log(`[smarty] Done — stock=${stock} (${totalStock} ks total), label="${label}"`);
-    return { stock, label, stockAmount };
+    // "Skladem celkem <b>4 ks</b>" → "4 ks"
+    const stockAmount = root.querySelector(".toStoreInfo .color-green b")?.text.trim() || undefined;
+
+    // Price from the buyBox div
+    const priceText = root.querySelector(".buyBox-price")?.text.trim().replace(/\s+/g, " ");
+    const price = priceText || undefined;
+
+    // First active gallery slide
+    const imageUrl = root.querySelector(".gallery-item.tns-slide-active img")?.getAttribute("src") ?? undefined;
+
+    console.log(`[smarty] Done — stock=${stock}, label="${label}"`);
+    return { stock, label, price, stockAmount, imageUrl };
   },
 };
