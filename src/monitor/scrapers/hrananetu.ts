@@ -35,8 +35,8 @@ export const hrananetuScraper: StockScraper = {
       stock = "in-stock";
     }
 
-    // First active carousel item = main product image
-    const imageUrl = root.querySelector("figure.carousel-item.active img")?.getAttribute("src") ?? undefined;
+    // First schema.org image — more reliable than .active class which can have extra classes
+    const imageUrl = root.querySelector('img[itemprop="image"]')?.getAttribute("src") ?? undefined;
 
     return { stock, label, price, stockAmount, imageUrl };
   },
