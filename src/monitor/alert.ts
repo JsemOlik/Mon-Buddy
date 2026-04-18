@@ -44,7 +44,7 @@ export function buildStockAlert(
     .setURL(product.url)
     .addFields(...fields)
     .setTimestamp()
-    .setFooter({ text: `Monitor ID: ${product.id}` });
+    .setFooter({ text: `ID: ${product.id}` });
 
   if (imageUrl) embed.setImage(imageUrl);
 

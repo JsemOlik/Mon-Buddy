@@ -24,9 +24,8 @@ client.once(Events.ClientReady, async (c) => {
   c.user.setPresence({
     status: "online",
     activities: [{
-      name: "Looking out for you!",
-      type: ActivityType.Streaming,
-      url: "https://www.twitch.tv/pokebuddy",
+      name: "Pokémon!",
+      type: ActivityType.Watching,
     }],
   });
   monitor.initMonitor(c);
