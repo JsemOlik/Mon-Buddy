@@ -22,10 +22,8 @@ export function startPresenceRotation(client: Client): void {
     const uptime = formatUptime(Date.now() - startedAt);
 
     const slides = [
-      { type: ActivityType.Playing,   name: "Pokémon!" },
-      { type: ActivityType.Watching,  name: `${monitorCount} product${monitorCount !== 1 ? "s" : ""}` },
-      { type: ActivityType.Listening, name: `${guildCount} server${guildCount !== 1 ? "s" : ""}` },
-      { type: ActivityType.Playing,   name: `online for ${uptime}` },
+      { type: ActivityType.Playing,  name: "Pokémon!" },
+      { type: ActivityType.Watching, name: `${monitorCount} product${monitorCount !== 1 ? "s" : ""}` },
     ];
 
     const slide = slides[index % slides.length]!;
