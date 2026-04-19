@@ -1,4 +1,4 @@
-export type StockStatus = "in-stock" | "pre-order" | "not-in-stock";
+export type StockStatus = "in-stock" | "pre-order" | "not-in-stock" | "not-released";
 
 export interface ScrapeResult {
   stock: StockStatus;

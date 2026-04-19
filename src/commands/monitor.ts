@@ -135,7 +135,7 @@ function buildListPage(
   } else {
     const rows = slice.map((p) => {
       const store = storeDisplayNames[p.store] ?? p.store;
-      const status = p.stock === "in-stock" ? "✅" : p.stock === "pre-order" ? "🔵" : "❌";
+      const status = p.stock === "in-stock" ? "✅" : p.stock === "pre-order" ? "🔵" : p.stock === "not-released" ? "🔜" : "❌";
       return `**${p.id}.** ${status} [${p.label}](${p.url})\n↳ ${store}`;
     });
     embed

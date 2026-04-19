@@ -12,31 +12,36 @@ export const veselydrakScraper: StockScraper = {
 
     const label = root.querySelector("h1")?.text.trim() ?? url;
 
-    // Green span = in-stock text like "Skladem: > 10 ks"
-    // Red span = not available text like "Na eshopu nemáme dostupné"
-    const greenSpan = root.querySelector("span.text-green");
-    const redSpan = root.querySelector("span.text-red");
+    // Price is inside .price-num — "0 Kč" means not yet released
+    const priceNumRaw = root.querySelector(".price-num")?.text.replace(/\s+/g, " ").trim() ?? "";
+    const priceValue = parseInt(priceNumRaw.replace(/\D/g, ""), 10);
+    const price = priceNumRaw || undefined;
 
-    let stock: ScrapeResult["stock"] = "not-in-stock";
+    // Green span = in-stock e.g. "Skladem: > 10 ks"
+    // Red span   = unavailable e.g. "Na eshopu nemáme dostupné"
+    const greenSpan = root.querySelector("span.text-green");
+    const redSpan   = root.querySelector("span.text-red");
+
+    let stock: ScrapeResult["stock"];
     let stockAmount: string | undefined;
 
     if (greenSpan) {
       const text = greenSpan.text.trim();
+      stockAmount = text;
       if (text.toLowerCase().includes("předprodej") || text.toLowerCase().includes("předobjednávka")) {
         stock = "pre-order";
       } else {
         stock = "in-stock";
       }
-      stockAmount = text;
     } else if (redSpan) {
+      // Price 0 (or missing) = not yet released; valid price = just out of stock
+      stock = (!priceValue || priceValue === 0) ? "not-released" : "not-in-stock";
+    } else {
       stock = "not-in-stock";
     }
 
-    const priceRaw = root.querySelector(".price-box .price, .product-price, #product-price")?.text.trim();
-    const price = priceRaw ? priceRaw.replace(/\s+/g, " ") : undefined;
-
     const imageUrl =
-      root.querySelector('.product-image img, .gallery-main img, #product-image')?.getAttribute("src") ??
+      root.querySelector(".product-image img")?.getAttribute("src") ??
       root.querySelector('img[itemprop="image"]')?.getAttribute("src") ??
       undefined;
 
