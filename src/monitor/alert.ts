@@ -2,21 +2,25 @@ import { EmbedBuilder, Colors, ButtonBuilder, ButtonStyle, ActionRowBuilder } fr
 import type { ProductRow } from "./db.ts";
 
 const storeDisplayNames: Record<string, string> = {
-  hrananetu: "HraNaNetu.cz",
-  cardstore: "CardStore.cz",
-  cdmc:      "CDMC.cz",
-  xzone:     "Xzone.cz",
-  alza:      "Alza.cz",
-  smarty:    "Smarty.cz",
+  hrananetu:  "HraNaNetu.cz",
+  cardstore:  "CardStore.cz",
+  cdmc:       "CDMC.cz",
+  xzone:      "Xzone.cz",
+  alza:       "Alza.cz",
+  smarty:     "Smarty.cz",
+  veselydrak: "VeselyDrak.cz",
+  chaotit:    "Chaotit.cz",
 };
 
 const storeColors: Record<string, number> = {
-  hrananetu: 0x4b0082, // dark purple
-  cardstore: 0xffd700, // gold
-  cdmc:      0xe74c3c, // red
-  xzone:     0xEB6524, // orange
-  alza:      0x00a650, // alza green
-  smarty:    0xe4007c, // smarty magenta
+  hrananetu:  0x4b0082, // dark purple
+  cardstore:  0xffd700, // gold
+  cdmc:       0xe74c3c, // red
+  xzone:      0xEB6524, // orange
+  alza:       0x00a650, // alza green
+  smarty:     0xe4007c, // smarty magenta
+  veselydrak: 0xEE741D, // vesely drak orange
+  chaotit:    0x7DB82B, // chaotit green
 };
 
 export function buildStockAlert(

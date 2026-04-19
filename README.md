@@ -104,6 +104,7 @@ Stock statuses: **`in-stock`** · **`pre-order`** · **`not-in-stock`** · **`no
 | CDMC | cdmc.cz | Direct fetch |
 | Xzone | xzone.cz | Direct fetch |
 | Veselý Drak | vesely-drak.cz | Direct fetch |
+| Chaotit | chaotit.cz | Direct fetch |
 | Alza | alza.cz | EzSolver (Cloudflare bypass) |
 | Smarty | smarty.cz | EzSolver (Cloudflare bypass) |
 
@@ -187,3 +188,119 @@ docker compose up -d
 Images:
 - `ghcr.io/jsemolik/mon-buddy-bot:latest`
 - `ghcr.io/jsemolik/mon-buddy-solver:latest`
+
+---
+
+## Adding a New Store
+
+### Option A — Direct fetch (plain HTML scraping)
+
+Use this for stores that serve normal HTML to `fetch` with no bot-protection.
+
+**1. Create the scraper** — `src/monitor/scrapers/mystore.ts`
+
+```typescript
+import { parse } from "node-html-parser";
+import type { StockScraper, ScrapeResult } from "./base.ts";
+import { fetchHtml } from "./base.ts";
+
+export const mystoreScraper: StockScraper = {
+  storeName: "mystore",           // lowercase, no spaces — used as the DB key
+  hostPattern: /mystore\.cz$/,    // matched against URL hostname
+
+  async scrape(url: string): Promise<ScrapeResult> {
+    const html = await fetchHtml(url);
+    const root = parse(html);
+
+    const label = root.querySelector("h1")?.text.trim() ?? url;
+
+    // Determine stock status — inspect the store's HTML to find the right selector
+    const inStock = !!root.querySelector(".some-in-stock-indicator");
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
+    // Use "pre-order" or "not-released" where applicable
+
+    const price = root.querySelector(".price")?.text.trim().replace(/\s+/g, " ");
+    const stockAmount = root.querySelector(".stock-qty")?.text.trim();
+
+    // Prepend origin if the src is a relative path
+    const imageSrc = root.querySelector("img.product-image")?.getAttribute("src");
+    const imageUrl = imageSrc
+      ? (imageSrc.startsWith("http") ? imageSrc : `https://www.mystore.cz${imageSrc}`)
+      : undefined;
+
+    return { stock, label, price, stockAmount, imageUrl };
+  },
+};
+```
+
+**2. Register the scraper** — `src/monitor/scrapers/index.ts`
+
+```typescript
+import { mystoreScraper } from "./mystore.ts";
+const registry: StockScraper[] = [...existingScrapers, mystoreScraper];
+```
+
+**3. Add display name & embed colour** — `src/monitor/alert.ts`
+
+```typescript
+storeDisplayNames["mystore"] = "MyStore.cz";
+storeColors["mystore"] = 0xRRGGBB;
+```
+
+**4. Add to the website** — `web/app/page.tsx` (STORES array) and `web/components/footer.tsx` (STORE_LINKS), then drop a logo into `web/public/`.
+
+---
+
+### Option B — EzSolver / Chromium (Cloudflare-protected stores)
+
+Use this when plain `fetch` returns a 403 or a Cloudflare challenge page.
+
+**1. Create the scraper** — same structure as Option A, but use `fetchViaSolver` instead of `fetchHtml`:
+
+```typescript
+import { parse } from "node-html-parser";
+import type { StockScraper, ScrapeResult } from "./base.ts";
+
+const SOLVER_URL = process.env.SOLVER_URL ?? "http://127.0.0.1:8191";
+
+async function fetchViaSolver(url: string): Promise<string> {
+  const res = await fetch(`${SOLVER_URL}/fetch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) throw new Error(`EzSolver HTTP ${res.status}`);
+  const { html } = await res.json() as { html: string };
+  return html;
+}
+
+export const mystoreScraper: StockScraper = {
+  storeName: "mystore",
+  hostPattern: /mystore\.cz$/,
+
+  async scrape(url: string): Promise<ScrapeResult> {
+    const html = await fetchViaSolver(url);
+    const root = parse(html);
+    // ... same parsing logic as Option A
+  },
+};
+```
+
+**2. Add the store to `SLOW_STORES`** in `src/monitor/poller.ts` so it is polled every 2 minutes instead of 30 seconds (Chromium is slower and heavier):
+
+```typescript
+const SLOW_STORES = new Set(["alza", "smarty", "mystore"]);
+```
+
+**3. Steps 2–4 are identical to Option A.**
+
+---
+
+### Stock statuses reference
+
+| Value | Meaning |
+|---|---|
+| `in-stock` | Item can be purchased now |
+| `pre-order` | Item can be pre-ordered |
+| `not-in-stock` | Item exists but is currently sold out |
+| `not-released` | Item has not been released yet (typically price = 0 or 1 Kč) |
