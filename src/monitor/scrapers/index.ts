@@ -5,8 +5,9 @@ import { cdmcScraper } from "./cdmc.ts";
 import { xzoneScraper } from "./xzone.ts";
 import { alzaScraper } from "./alza.ts";
 import { smartyScraper } from "./smarty.ts";
+import { veselydrakScraper } from "./veselydrak.ts";
 
-const registry: StockScraper[] = [hrananetuScraper, cardstoreScraper, cdmcScraper, xzoneScraper, alzaScraper, smartyScraper];
+const registry: StockScraper[] = [hrananetuScraper, cardstoreScraper, cdmcScraper, xzoneScraper, alzaScraper, smartyScraper, veselydrakScraper];
 
 export function getScraperForUrl(url: string): StockScraper | null {
   try {
