@@ -5,7 +5,7 @@ import { buildStockAlert } from "./alert.ts";
 
 // Alza and Smarty route through EzSolver (real Chromium), which is much slower
 // than a plain fetch — poll them less frequently to avoid overloading the solver.
-const SLOW_STORES = new Set(["alza", "smarty"]);
+const SLOW_STORES = new Set(["alza", "smarty", "jrc"]);
 const SLOW_INTERVAL_MS = 120_000; // 2 min
 const FAST_INTERVAL_MS = 30_000;  // 30 sec
 

@@ -11,6 +11,7 @@ const storeDisplayNames: Record<string, string> = {
   veselydrak: "VeselyDrak.cz",
   chaotit:    "Chaotit.cz",
   pokeriders: "PokeRiders.cz",
+  jrc:        "JRC.cz",
 };
 
 const storeColors: Record<string, number> = {
@@ -23,6 +24,7 @@ const storeColors: Record<string, number> = {
   veselydrak: 0xEE741D, // vesely drak orange
   chaotit:    0x7DB82B, // chaotit green
   pokeriders: 0xE84E4B, // pokeriders red
+  jrc:        0x005CA9, // jrc blue
 };
 
 export function buildStockAlert(
