@@ -61,7 +61,7 @@ A Discord bot that monitors Czech Pokémon card stores for restocks and notifies
 The core Discord bot. On startup it initialises the database, registers slash command handlers, starts the product poller, and exposes the internal REST API.
 
 - **Commands** (`src/commands/`) — `/monitor add|list|remove|check`, `/help`, `/ping`. All monitor commands require **Manage Server** permission.
-- **Poller** (`src/monitor/poller.ts`) — runs every 30 s. Checks each product through its scraper and fires a Discord embed alert when stock changes from out → in.
+- **Poller** (`src/monitor/poller.ts`) — runs every 30 s. Checks each product through its scraper and fires a Discord embed alert on orderable stock transitions (see [Alert conditions](#alert-conditions)).
 - **Scrapers** (`src/monitor/scrapers/`) — one scraper per store, matched by hostname. Most stores are plain `fetch` + HTML parse. Alza and Smarty route through EzSolver to bypass Cloudflare.
 - **Browser / CDP** (`src/monitor/browser.ts`, `src/monitor/cdp.ts`) — spawns a single persistent Chromium process via Bun and communicates with it over the Chrome DevTools Protocol using Bun's native WebSocket (Playwright's WebSocket layer is incompatible with Bun).
 - **REST API** (`src/api/server.ts`) — Bun HTTP server on port 4040. Used exclusively by the web dashboard. Protected by `X-API-Key`.
@@ -79,6 +79,22 @@ Dual-mode: **SQLite** (local dev, `mon-buddy.db`) or **PostgreSQL** (production,
 
 ---
 
+## Alert Conditions
+
+An alert is sent **only when the stock status actually changes** into an orderable state. Repeated checks in the same state produce no noise.
+
+| Transition | Alert sent |
+|---|---|
+| anything → `in-stock` | ✅ In-stock alert |
+| `not-in-stock` / `not-released` → `pre-order` | 🔵 Pre-order alert |
+| `not-released` → `not-in-stock` | ❌ No alert |
+| anything → `not-in-stock` / `not-released` | ❌ No alert |
+| `in-stock` → `pre-order` | ❌ No alert (downgrade) |
+
+Stock statuses: **`in-stock`** · **`pre-order`** · **`not-in-stock`** · **`not-released`** (price is 0 and item unavailable — only used by Veselý Drak).
+
+---
+
 ## Supported Stores
 
 | Store | Domain | Method |
@@ -87,6 +103,7 @@ Dual-mode: **SQLite** (local dev, `mon-buddy.db`) or **PostgreSQL** (production,
 | CardStore | cardstore.cz | Direct fetch |
 | CDMC | cdmc.cz | Direct fetch |
 | Xzone | xzone.cz | Direct fetch |
+| Veselý Drak | vesely-drak.cz | Direct fetch |
 | Alza | alza.cz | EzSolver (Cloudflare bypass) |
 | Smarty | smarty.cz | EzSolver (Cloudflare bypass) |
 

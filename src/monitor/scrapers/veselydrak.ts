@@ -40,10 +40,8 @@ export const veselydrakScraper: StockScraper = {
       stock = "not-in-stock";
     }
 
-    const imageUrl =
-      root.querySelector(".product-image img")?.getAttribute("src") ??
-      root.querySelector('img[itemprop="image"]')?.getAttribute("src") ??
-      undefined;
+    const imagePath = root.querySelector(".image-holder img")?.getAttribute("src") ?? undefined;
+    const imageUrl = imagePath ? `https://www.vesely-drak.cz${imagePath}` : undefined;
 
     return { stock, label, price, stockAmount, imageUrl };
   },
