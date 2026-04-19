@@ -34,7 +34,13 @@ export const smartyScraper: StockScraper = {
     // Schema.org availability link is the most reliable signal
     const availHref = root.querySelector('link[itemprop="availability"]')?.getAttribute("href") ?? "";
     const inStock = availHref.toLowerCase().includes("instock");
-    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
+
+    // "Připravujeme" or "Cena nebyla stanovena" = not yet released
+    const preparing =
+      root.querySelector(".buyBox-link.color-red")?.text.includes("Připravujeme") ||
+      root.querySelector(".font-small2.color-AAA")?.text.includes("Cena nebyla stanovena");
+
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : preparing ? "not-released" : "not-in-stock";
 
     // "Skladem celkem <b>4 ks</b>" → "4 ks"
     const stockAmount = root.querySelector(".toStoreInfo .color-green b")?.text.trim() || undefined;
