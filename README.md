@@ -105,6 +105,7 @@ Stock statuses: **`in-stock`** · **`pre-order`** · **`not-in-stock`** · **`no
 | Xzone | xzone.cz | Direct fetch |
 | Veselý Drak | vesely-drak.cz | Direct fetch |
 | Chaotit | chaotit.cz | Direct fetch |
+| PokeRiders | pokeriders.cz | Direct fetch |
 | Alza | alza.cz | EzSolver (Cloudflare bypass) |
 | Smarty | smarty.cz | EzSolver (Cloudflare bypass) |
 
