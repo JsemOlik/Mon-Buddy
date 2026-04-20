@@ -8,7 +8,9 @@
       "Bash(bun install *)",
       "Bash(grep -E \"\\\\.\\(ts|json|md|yml|yaml|env\\)$\")",
       "Bash(bunx shadcn@latest add tooltip --yes)",
-      "Bash(bunx shadcn@latest add dropdown-menu --yes)"
+      "Bash(bunx shadcn@latest add dropdown-menu --yes)",
+      "Bash(node -e \"const d = require\\('./node_modules/discord.js'\\); console.log\\(Object.keys\\(d\\).filter\\(k => k.toLowerCase\\(\\).includes\\('scheduled'\\) || k.toLowerCase\\(\\).includes\\('privacy'\\) || k.toLowerCase\\(\\).includes\\('entity'\\)\\)\\)\")",
+      "Bash(bun -e \"import * as d from 'discord.js'; console.log\\(Object.keys\\(d\\).filter\\(k => k.toLowerCase\\(\\).includes\\('scheduled'\\) || k.toLowerCase\\(\\).includes\\('privacy'\\) || k.toLowerCase\\(\\).includes\\('entity'\\)\\)\\)\")"
     ]
   }
 }

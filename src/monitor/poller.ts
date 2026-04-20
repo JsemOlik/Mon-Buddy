@@ -2,6 +2,7 @@ import type { Client, TextChannel } from "discord.js";
 import { listProducts, setStock, setReleaseDate, getConfig, type ProductRow } from "./db.ts";
 import { getScraperForUrl } from "./scrapers/index.ts";
 import { buildStockAlert } from "./alert.ts";
+import { createReleaseEvent } from "./events.ts";
 
 // Alza and Smarty route through EzSolver (real Chromium), which is much slower
 // than a plain fetch — poll them less frequently to avoid overloading the solver.
@@ -71,6 +72,7 @@ async function checkProduct(client: Client, product: ProductRow, force = false):
       console.log(`[monitor] Release date alert: ${product.label} — ${result.releaseDate}`);
       await setReleaseDate(product.id, result.releaseDate);
       await sendAlert(client, product, "release-date", result.price, result.stockAmount, result.imageUrl, result.releaseDate);
+      void createReleaseEvent(client, product, result.releaseDate, result.imageUrl);
     }
   } catch (err) {
     console.error(`[monitor] Failed to check ${product.url}:`, err);

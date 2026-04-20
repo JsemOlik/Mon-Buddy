@@ -72,6 +72,18 @@ export function startApiServer(client: Client): void {
         return json({ channels });
       }
 
+      // GET /api/guilds/:id/voice-channels — voice + stage channels for the guild
+      const voiceChannelsMatch = path.match(/^\/api\/guilds\/(\d+)\/voice-channels$/);
+      if (req.method === "GET" && voiceChannelsMatch) {
+        const guild = client.guilds.cache.get(voiceChannelsMatch[1]!);
+        if (!guild) return json({ error: "Guild not found" }, 404);
+        const channels = guild.channels.cache
+          .filter((c) => c.type === ChannelType.GuildVoice || c.type === ChannelType.GuildStageVoice)
+          .map((c) => ({ id: c.id, name: c.name, type: c.type === ChannelType.GuildStageVoice ? "stage" : "voice" }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        return json({ channels });
+      }
+
       // GET /api/monitors?guild=<id>
       if (req.method === "GET" && path === "/api/monitors") {
         const guildId = url.searchParams.get("guild") ?? "";
@@ -140,7 +152,9 @@ export function startApiServer(client: Client): void {
           (guildId ? await getConfig(`alert_channel_id:${guildId}`) : null) ??
           (await getConfig("alert_channel_id")) ??
           "";
-        return json({ alert_channel_id: alertChannelId });
+        const eventChannelId =
+          (guildId ? await getConfig(`event_channel_id:${guildId}`) : null) ?? "";
+        return json({ alert_channel_id: alertChannelId, event_channel_id: eventChannelId });
       }
 
       // PUT /api/config — { key, value, guildId? }

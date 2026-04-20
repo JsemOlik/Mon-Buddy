@@ -62,6 +62,18 @@ export const data = new SlashCommandBuilder()
           .addChannelTypes(ChannelType.GuildText)
           .setRequired(true)
       )
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("setevent")
+      .setDescription("Set the channel used for Discord release-date events (voice/stage), or disable them")
+      .addChannelOption((opt) =>
+        opt
+          .setName("channel")
+          .setDescription("Voice or stage channel for events — omit to disable")
+          .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
+          .setRequired(false)
+      )
   );
 
 export async function execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -74,6 +86,7 @@ export async function execute(interaction: ChatInputCommandInteraction): Promise
   if (sub === "remove") return handleRemove(interaction);
   if (sub === "list") return handleList(interaction);
   if (sub === "setchannel") return handleSetChannel(interaction);
+  if (sub === "setevent") return handleSetEvent(interaction);
 }
 
 function buildAddModal(): ModalBuilder {
@@ -201,6 +214,24 @@ async function handleSetChannel(interaction: ChatInputCommandInteraction): Promi
     content: `Stock alerts will now be sent to <#${channel.id}>.`,
     flags: MessageFlags.Ephemeral,
   });
+}
+
+async function handleSetEvent(interaction: ChatInputCommandInteraction): Promise<void> {
+  const channel = interaction.options.getChannel("channel", false);
+  const guildId = interaction.guildId ?? "";
+  if (channel) {
+    await setConfig(`event_channel_id:${guildId}`, channel.id);
+    await interaction.reply({
+      content: `Release-date Discord events will be created in <#${channel.id}>.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  } else {
+    await setConfig(`event_channel_id:${guildId}`, "");
+    await interaction.reply({
+      content: "Release-date Discord events have been disabled for this server.",
+      flags: MessageFlags.Ephemeral,
+    });
+  }
 }
 
 export async function handleModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
