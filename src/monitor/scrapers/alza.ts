@@ -43,7 +43,7 @@ export const alzaScraper: StockScraper = {
     if (availText.includes("skladem") && !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p))) {
       stock = "in-stock";
     } else if (hasPreorderPriceHeader) {
-      stock = "not-in-stock";
+      stock = "not-released";
     } else {
       stock = "not-in-stock";
     }
