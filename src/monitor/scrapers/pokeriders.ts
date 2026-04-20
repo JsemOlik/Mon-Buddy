@@ -39,12 +39,20 @@ export const pokeridersScraper: StockScraper = {
       stock = priceValue === 1 ? "not-released" : "not-in-stock";
     }
 
+    // Release date announced in short description: "Vychází 24.4.2026"
+    let releaseDate: string | undefined;
+    if (stock === "not-released") {
+      const shortDescText = root.querySelector('#short-description')?.text ?? "";
+      const match = shortDescText.match(/vych[aá]z[ií]\s+[\d.]+\.?\d{4}/i);
+      if (match) releaseDate = match[0].trim();
+    }
+
     // Absolute CDN image URL from the gallery anchor
     const imageUrl =
       root.querySelector('a#gallery-image img')?.getAttribute("src") ??
       root.querySelector('img[data-testid="mainImage"]')?.getAttribute("src") ??
       undefined;
 
-    return { stock, label, price, stockAmount, imageUrl };
+    return { stock, label, price, stockAmount, releaseDate, imageUrl };
   },
 };

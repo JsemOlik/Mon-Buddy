@@ -29,24 +29,35 @@ const storeColors: Record<string, number> = {
 
 export function buildStockAlert(
   product: ProductRow,
-  alertType: "in-stock" | "pre-order",
+  alertType: "in-stock" | "pre-order" | "release-date",
   price?: string,
   stockAmount?: string,
   imageUrl?: string,
+  releaseDate?: string,
 ): { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> } {
   const storeName = storeDisplayNames[product.store] ?? product.store;
-  const color = alertType === "pre-order" ? Colors.Blue : (storeColors[product.store] ?? Colors.Green);
+  const color =
+    alertType === "pre-order" ? Colors.Blue :
+    alertType === "release-date" ? Colors.Orange :
+    (storeColors[product.store] ?? Colors.Green);
 
   const fields: { name: string; value: string; inline: boolean }[] = [
     { name: "Store", value: storeName, inline: true },
-    { name: "Price", value: price ?? "—", inline: true },
   ];
 
-  if (stockAmount) {
-    fields.push({ name: alertType === "pre-order" ? "Pre-order Qty" : "In Stock", value: stockAmount, inline: true });
+  if (alertType === "release-date") {
+    fields.push({ name: "Release Date", value: releaseDate ?? "—", inline: true });
+  } else {
+    fields.push({ name: "Price", value: price ?? "—", inline: true });
+    if (stockAmount) {
+      fields.push({ name: alertType === "pre-order" ? "Pre-order Qty" : "In Stock", value: stockAmount, inline: true });
+    }
   }
 
-  const title = alertType === "pre-order" ? "Pre-order Available!" : "Back in Stock!";
+  const title =
+    alertType === "pre-order" ? "Pre-order Available!" :
+    alertType === "release-date" ? "Release Date Announced!" :
+    "Back in Stock!";
 
   const embed = new EmbedBuilder()
     .setColor(color)
@@ -61,7 +72,7 @@ export function buildStockAlert(
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setLabel(alertType === "pre-order" ? "Pre-order Now" : "View Product")
+      .setLabel(alertType === "release-date" ? "View Product" : alertType === "pre-order" ? "Pre-order Now" : "View Product")
       .setURL(product.url)
       .setStyle(ButtonStyle.Link),
   );

@@ -1,5 +1,5 @@
 import type { Client, TextChannel } from "discord.js";
-import { listProducts, setStock, getConfig, type ProductRow } from "./db.ts";
+import { listProducts, setStock, setReleaseDate, getConfig, type ProductRow } from "./db.ts";
 import { getScraperForUrl } from "./scrapers/index.ts";
 import { buildStockAlert } from "./alert.ts";
 
@@ -67,6 +67,10 @@ async function checkProduct(client: Client, product: ProductRow, force = false):
     } else if (prevStock !== "pre-order" && prevStock !== "in-stock" && result.stock === "pre-order") {
       console.log(`[monitor] Pre-order alert: ${product.label}`);
       await sendAlert(client, product, "pre-order", result.price, result.stockAmount, result.imageUrl);
+    } else if (result.stock === "not-released" && result.releaseDate && result.releaseDate !== product.release_date) {
+      console.log(`[monitor] Release date alert: ${product.label} — ${result.releaseDate}`);
+      await setReleaseDate(product.id, result.releaseDate);
+      await sendAlert(client, product, "release-date", result.price, result.stockAmount, result.imageUrl, result.releaseDate);
     }
   } catch (err) {
     console.error(`[monitor] Failed to check ${product.url}:`, err);
@@ -82,10 +86,11 @@ export async function checkProductNow(client: Client, product: ProductRow): Prom
 async function sendAlert(
   client: Client,
   product: ProductRow,
-  alertType: "in-stock" | "pre-order",
+  alertType: "in-stock" | "pre-order" | "release-date",
   price?: string,
   stockAmount?: string,
   imageUrl?: string,
+  releaseDate?: string,
 ): Promise<void> {
   // Per-guild channel takes priority; fall back to the legacy global setting.
   const channelId =
@@ -97,7 +102,7 @@ async function sendAlert(
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isTextBased()) return;
-    const { embed, row } = buildStockAlert(product, alertType, price, stockAmount, imageUrl);
+    const { embed, row } = buildStockAlert(product, alertType, price, stockAmount, imageUrl, releaseDate);
     await (channel as TextChannel).send({ embeds: [embed], components: [row] });
   } catch (err) {
     console.error(`[monitor] Failed to send alert:`, err);

@@ -11,6 +11,7 @@ export interface ProductRow {
   added_by: string;
   added_at: number;
   guild_id: string;
+  release_date: string | null;
 }
 
 // Automatically switch between SQLite (local) and PostgreSQL (production)
@@ -38,11 +39,13 @@ export async function initDb(): Promise<void> {
         last_checked BIGINT,
         added_by     TEXT    NOT NULL,
         added_at     BIGINT  NOT NULL,
-        guild_id     TEXT    NOT NULL DEFAULT ''
+        guild_id     TEXT    NOT NULL DEFAULT '',
+        release_date TEXT
       )
     `;
     // Migrate legacy in_stock column if it exists
     await sql`ALTER TABLE monitored_products ADD COLUMN IF NOT EXISTS stock TEXT NOT NULL DEFAULT 'not-in-stock'`;
+    await sql`ALTER TABLE monitored_products ADD COLUMN IF NOT EXISTS release_date TEXT`;
     await sql`UPDATE monitored_products SET stock = 'in-stock' WHERE in_stock = 1 AND stock = 'not-in-stock'`;
     await sql`
       CREATE TABLE IF NOT EXISTS config (
@@ -77,13 +80,15 @@ export async function initDb(): Promise<void> {
       last_checked INTEGER,
       added_by     TEXT    NOT NULL,
       added_at     INTEGER NOT NULL,
-      guild_id     TEXT    NOT NULL DEFAULT ''
+      guild_id     TEXT    NOT NULL DEFAULT '',
+      release_date TEXT
     )
   `);
   // Migrations for existing databases
   try { db.run(`ALTER TABLE monitored_products ADD COLUMN stock TEXT NOT NULL DEFAULT 'not-in-stock'`); } catch { /* already exists */ }
   try { db.run(`UPDATE monitored_products SET stock = 'in-stock' WHERE in_stock = 1 AND stock = 'not-in-stock'`); } catch { /* in_stock column may not exist */ }
   try { db.run(`ALTER TABLE monitored_products ADD COLUMN guild_id TEXT NOT NULL DEFAULT ''`); } catch { /* already exists */ }
+  try { db.run(`ALTER TABLE monitored_products ADD COLUMN release_date TEXT`); } catch { /* already exists */ }
   db.run(`
     CREATE TABLE IF NOT EXISTS config (
       key   TEXT PRIMARY KEY,
@@ -116,6 +121,7 @@ function pgRow(row: Record<string, unknown>): ProductRow {
     added_by: row["added_by"] as string,
     added_at: Number(row["added_at"]),
     guild_id: row["guild_id"] as string,
+    release_date: (row["release_date"] as string | null) ?? null,
   };
 }
 
@@ -207,6 +213,16 @@ export async function setStock(id: number, stock: StockStatus): Promise<void> {
   db!.prepare<void, [number, string, number]>(
     `INSERT INTO stock_events (product_id, event, detected_at) VALUES (?1, ?2, ?3)`,
   ).run(id, stock, now);
+}
+
+export async function setReleaseDate(id: number, date: string | null): Promise<void> {
+  if (USE_PG) {
+    await sql`UPDATE monitored_products SET release_date = ${date} WHERE id = ${id}`;
+    return;
+  }
+  db!.prepare<void, [string | null, number]>(
+    `UPDATE monitored_products SET release_date = ?1 WHERE id = ?2`,
+  ).run(date, id);
 }
 
 export async function getConfig(key: string): Promise<string | null> {

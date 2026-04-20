@@ -5,6 +5,7 @@ export interface ScrapeResult {
   label: string;
   price?: string;
   stockAmount?: string;  // e.g. ">15 ks", "3 ks"
+  releaseDate?: string;  // e.g. "Vychází 24.4.2026" — set when a release date is announced
   imageUrl?: string;
 }
 
