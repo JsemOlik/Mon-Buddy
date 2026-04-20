@@ -19,11 +19,6 @@ export const cdmcScraper: StockScraper = {
       .querySelector('[data-testid="labelAvailability"]')
       ?.text.trim().toLowerCase() ?? "";
 
-    const inStock =
-      availText.length > 0 &&
-      !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
-    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
-
     // Stock amount — innermost span holds the clean value, e.g. ">15 ks"
     const stockAmount = root
       .querySelector(".product-stock-amount")
@@ -42,12 +37,22 @@ export const cdmcScraper: StockScraper = {
     const releaseBadge = root
       .querySelectorAll(".flag")
       .find((el) => /flag-vychazi-\d/.test(el.classNames));
-    const releaseDate = releaseBadge?.text.trim() || undefined;
+    const badgeReleaseDate = releaseBadge?.text.trim() || undefined;
 
-    // Future release always overrides stock status
+    // Availability text may also say "Vychází 24.4.2026"
+    const availRelease = /vych[aá]z[ií]/i.test(availText) ? availText : undefined;
+
+    const releaseDate = badgeReleaseDate ?? availRelease;
+
+    // Any release date signal → not-released (takes priority over stock text)
     if (releaseDate) {
-      return { stock: "not-in-stock", label, price: priceText, stockAmount: releaseDate, imageUrl };
+      return { stock: "not-released", label, price: priceText, releaseDate, imageUrl };
     }
+
+    const inStock =
+      availText.length > 0 &&
+      !OUT_OF_STOCK_PHRASES.some((p) => availText.includes(p));
+    const stock: ScrapeResult["stock"] = inStock ? "in-stock" : "not-in-stock";
 
     return { stock, label, price: priceText, stockAmount, imageUrl };
   },
